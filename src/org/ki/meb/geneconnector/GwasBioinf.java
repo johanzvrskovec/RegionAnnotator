@@ -3,12 +3,13 @@ import java.io.File;
 import java.io.PrintStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.HashMap;
 
+import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.camel.CamelContext;
+import org.apache.camel.ProducerTemplate;
+import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -18,9 +19,11 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.commons.configuration.tree.ConfigurationNode;
-import org.codehaus.groovy.runtime.GroovyCategorySupport.CategoryMethodList;
 
-import java.sql.ResultSetMetaData;
+import javax.jms.ConnectionFactory;
+import org.apache.camel.component.jms.JmsComponent;
+
+import getl.proc.Flow;
 
 public class GwasBioinf
 {
@@ -80,7 +83,7 @@ public class GwasBioinf
         cacheCon = DriverManager.getConnection(cacheDBURL); 
     }
 	
-	private static void shutdown() throws SQLException
+	private static void shutdownCacheConnection() throws SQLException
     {
         if (cacheCon != null)
         {
@@ -97,11 +100,11 @@ public class GwasBioinf
 	}
 	
 	
-	public static void main(String[] args) throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ConfigurationException, ParseException
+	public static void main(String[] args) throws Exception
 	{
-		createCacheConnection();
+		//createCacheConnection();
 		new GwasBioinf().setCommandLine(constructCommandLine(args)).runCommands();
-		shutdown();
+		shutdownCacheConnection();
 	}
 	
 	//always to standard output
@@ -118,12 +121,43 @@ public class GwasBioinf
 		return this;
 	}
 	
-	private void initDataFromFiles()
+	private void initDataFromFiles() throws Exception
 	{
-		final CamelContext camelContext = new DefaultCamelContext();  
+		CamelContext routingEngineContext = new DefaultCamelContext();
+		ConnectionFactory conFactory = new ActiveMQConnectionFactory("vm://localhost?broker.persistent=false");
+		routingEngineContext.addComponent("jmscomponent", JmsComponent.jmsComponentAutoAcknowledge(conFactory));
+		
+		RouteBuilder routeBuilder = new RouteBuilder() 
+		{
+			
+			@Override
+			public void configure() throws Exception 
+			{
+				from("jmscomponent:queue:test.queue").to("file://test");
+			}
+		};
+		
+		routingEngineContext.addRoutes(routeBuilder);
+		
+		
+		ProducerTemplate template = routingEngineContext.createProducerTemplate();
+		
+		routingEngineContext.start();
+		
+		for (int i = 0; i < 10; i++) 
+		{
+            template.sendBody("jmscomponent:queue:test.queue", "Hello Camel! Test Message: " + i);
+        }
+		
+		Thread.sleep(1000);
+		if(!routingEngineContext.getStatus().isStoppable())
+		{
+			throw new Exception("CAn't stop the routing context!");
+		}
+		routingEngineContext.stop();
 	}
 	
-	private GwasBioinf runCommands() throws ConfigurationException
+	private GwasBioinf runCommands() throws Exception
 	{
 		if(commandLine.hasOption(TextMap.help))
 		{
@@ -142,10 +176,10 @@ public class GwasBioinf
 		
 		init();
 		
-		if(commandLine.hasOption(TextMap.init))
-		{
+		//if(commandLine.hasOption(TextMap.init))
+		//{
 			initDataFromFiles();
-		}
+		//}
 		
 		return this;
 	}
