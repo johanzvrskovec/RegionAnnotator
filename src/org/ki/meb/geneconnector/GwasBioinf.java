@@ -1,9 +1,7 @@
 package org.ki.meb.geneconnector;
 import java.io.File;
+import java.io.FilenameFilter;
 import java.io.PrintStream;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.camel.CamelContext;
@@ -23,13 +21,11 @@ import org.apache.commons.configuration.tree.ConfigurationNode;
 import javax.jms.ConnectionFactory;
 import org.apache.camel.component.jms.JmsComponent;
 
-import getl.proc.Flow;
+//import getl.proc.Flow;
 
 public class GwasBioinf
 {
 	
-	private static String cacheDBURL = "jdbc:derby:GwasBioinf;create=true;user=GwasBioinfInternal;password=GwasBioinfInternalPass";
-	private static Connection cacheCon = null;
 	private CommandLine commandLine;
 	
 	private static Options clOptions = new Options();
@@ -37,7 +33,9 @@ public class GwasBioinf
 	private PrintStream directedMessageOutputStream;
 	
 	private String settingCharsetEncodingText;
-	private File settingInputFolder, settingOutputFolder, settingConfigFilePath;
+	private File settingInputFolder, settingOutputFolder, settingConfigFile;
+	private GwasBioinfDataCache dataCache;
+	private FilenameFilter filterExcelXlsx;
 	
 	static
 	{
@@ -62,35 +60,27 @@ public class GwasBioinf
 
 	public GwasBioinf()
 	{
-		
+		filterExcelXlsx= new FilenameFilter() 
+		{
+			@Override
+			public boolean accept(File dir, String name) 
+			{
+				return name.toLowerCase().matches("^.+\\.xlsx$");
+			}
+		};
 	}
 
 	private void init() throws ConfigurationException
 	{
-		XMLConfiguration config = new XMLConfiguration(settingConfigFilePath);
+		XMLConfiguration config = new XMLConfiguration(settingConfigFile);
 		ConfigurationNode rootNode = config.getRootNode();
 		//setDBConnectionString((String)((ConfigurationNode)rootNode.getChildren(TextMap.database_connectionstring).get(0)).getValue());
 		//setResourceFolder((String)((ConfigurationNode)rootNode.getChildren(TextMap.resourcefolderpath).get(0)).getValue());
 		settingInputFolder = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.inputfolderpath).get(0)).getValue());
 		settingOutputFolder = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.outputfolderpath).get(0)).getValue());
 		settingCharsetEncodingText="UTF-8";
+		dataCache=new GwasBioinfDataCache();
 	}
-	
-	private static void createCacheConnection() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException
-    {
-        Class.forName("org.apache.derby.jdbc.EmbeddedDriver").newInstance();
-        //Get a connection
-        cacheCon = DriverManager.getConnection(cacheDBURL); 
-    }
-	
-	private static void shutdownCacheConnection() throws SQLException
-    {
-        if (cacheCon != null)
-        {
-            DriverManager.getConnection(cacheDBURL + ";shutdown=true");
-            cacheCon.close();
-        }           
-    }
 	
 	public static CommandLine constructCommandLine(String[] args) throws ParseException
 	{
@@ -102,9 +92,7 @@ public class GwasBioinf
 	
 	public static void main(String[] args) throws Exception
 	{
-		//createCacheConnection();
 		new GwasBioinf().setCommandLine(constructCommandLine(args)).runCommands();
-		shutdownCacheConnection();
 	}
 	
 	//always to standard output
@@ -121,7 +109,8 @@ public class GwasBioinf
 		return this;
 	}
 	
-	private void initDataFromFiles() throws Exception
+	//Camel version
+	private void initDataFromFiles_camel() throws Exception
 	{
 		CamelContext routingEngineContext = new DefaultCamelContext();
 		ConnectionFactory conFactory = new ActiveMQConnectionFactory("vm://localhost?broker.persistent=false");
@@ -157,6 +146,20 @@ public class GwasBioinf
 		routingEngineContext.stop();
 	}
 	
+	//Legacy POI version
+	private void initDataFromFiles() throws Exception
+	{
+		GwasBioinfExcelConverter converter = new GwasBioinfExcelConverter();
+		dataCache.createCacheConnection();
+		//import all files in input
+		File[] inputFiles = settingInputFolder.listFiles(filterExcelXlsx);
+		for(int iFile=0; iFile<inputFiles.length; iFile++)
+		{
+			converter.setOutputDataCache(dataCache).setInputFile(inputFiles[iFile]).convert();
+		}
+		dataCache.shutdownCacheConnection();
+	}
+	
 	private GwasBioinf runCommands() throws Exception
 	{
 		if(commandLine.hasOption(TextMap.help))
@@ -167,19 +170,20 @@ public class GwasBioinf
 		
 		if(commandLine.hasOption(TextMap.config))
 		{
-			settingConfigFilePath = new File(commandLine.getOptionValue(TextMap.config));
+			settingConfigFile = new File(commandLine.getOptionValue(TextMap.config));
 		}
 		else
 		{
-			settingConfigFilePath = new File("config.xml");
+			settingConfigFile = new File("config.xml");
 		}
 		
 		init();
 		
-		//if(commandLine.hasOption(TextMap.init))
-		//{
+		if(commandLine.hasOption(TextMap.init))
+		{
+			//initDataFromFiles_camel();
 			initDataFromFiles();
-		//}
+		}
 		
 		return this;
 	}
