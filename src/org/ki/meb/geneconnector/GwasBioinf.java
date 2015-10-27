@@ -2,6 +2,7 @@ package org.ki.meb.geneconnector;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.PrintStream;
+import java.sql.SQLException;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.camel.CamelContext;
@@ -109,7 +110,7 @@ public class GwasBioinf
 		return this;
 	}
 	
-	//Camel version
+	//Camel version -test
 	private void initDataFromFiles_camel() throws Exception
 	{
 		CamelContext routingEngineContext = new DefaultCamelContext();
@@ -141,13 +142,13 @@ public class GwasBioinf
 		Thread.sleep(1000);
 		if(!routingEngineContext.getStatus().isStoppable())
 		{
-			throw new Exception("CAn't stop the routing context!");
+			throw new Exception("Can't stop the routing context!");
 		}
 		routingEngineContext.stop();
 	}
 	
 	//Legacy POI version
-	private void initDataFromFiles() throws Exception
+	private void initDataFromFiles() throws ApplicationException, Exception
 	{
 		GwasBioinfExcelConverter converter = new GwasBioinfExcelConverter();
 		dataCache.createCacheConnection();
@@ -157,6 +158,14 @@ public class GwasBioinf
 		{
 			converter.setOutputDataCache(dataCache).setInputFile(inputFiles[iFile]).convert();
 		}
+		dataCache.shutdownCacheConnection();
+	}
+	
+	private void getData() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException
+	{
+		dataCache.createCacheConnection();
+		
+		
 		dataCache.shutdownCacheConnection();
 	}
 	
@@ -183,6 +192,11 @@ public class GwasBioinf
 		{
 			//initDataFromFiles_camel();
 			initDataFromFiles();
+		}
+		
+		if(commandLine.hasOption(TextMap.get))
+		{
+			getData();
 		}
 		
 		return this;

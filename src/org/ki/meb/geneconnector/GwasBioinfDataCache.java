@@ -7,6 +7,7 @@ import java.sql.SQLException;
 
 import org.apache.commons.lang.StringUtils;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 public class GwasBioinfDataCache 
@@ -18,6 +19,7 @@ public class GwasBioinfDataCache
 	private String cacheDBURL;
 	private Connection con;
 	
+	private PreparedStatement createStatement;
 	private PreparedStatement insertStatement;
 	
 	
@@ -25,10 +27,12 @@ public class GwasBioinfDataCache
 	private String path;
 	private JSONArray data;
 	private String variableNameListSQL;
+	private String variableDeclarationListSQL;
 	
 	public GwasBioinfDataCache() 
 	{
-		cacheDBURL = "jdbc:derby:GwasBioinf;create=true;user=GwasBioinfInternal;password=GwasBioinfInternalPass";
+		//cacheDBURL = "jdbc:derby:GwasBioinf;create=true;user=GwasBioinfInternal;password=GwasBioinfInternalPass";
+		cacheDBURL = "jdbc:derby:GwasBioinf;create=true;";
 	}
 	
 	public GwasBioinfDataCache createCacheConnection() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException
@@ -49,40 +53,132 @@ public class GwasBioinfDataCache
         return this;
     }
 	
-	private String constructVariableNameListSQL()
+	private void assertDBString(String dbString) throws ApplicationException
+	{
+		if(!dbString.matches("^[^\\s;\"\']+$"))
+			throw new ApplicationException("Database string error.");
+	}
+	
+	private void assertVarnames() throws ApplicationException
+	{
+		String varname;
+		for(int iVal=0; iVal<data.length(); iVal++)
+		{
+			varname = data.getJSONObject(iVal).getString("name");
+			assertDBString(varname);
+		}
+	}
+	
+	private String constructVariableNameListSQL() throws ApplicationException
 	{
 		StringBuilder q = new StringBuilder();
+		String varname;
 		if(0<data.length())
-			q.append(data.getJSONObject(0).getString("name"));
-		
+		{
+			varname = data.getJSONObject(0).getString("name");
+			q.append("\""+varname+"\"");
+		}
 		for(int iVal=1; iVal<data.length(); iVal++)
 		{
-			q.append(","+data.getJSONObject(iVal).getString("name"));
+			varname = data.getJSONObject(iVal).getString("name");
+			q.append(",\""+varname+"\"");
 		}
 		
 		return q.toString();
 	}
 	
-	private String constructCreateStatement()
+	private String constructVariableTypeDeclaration(int datatype) throws ApplicationException
 	{
-		return "INSERT INTO "+path+"("+variableNameListSQL+") VALUES ("+StringUtils.repeat("?,", data.length()-1)+StringUtils.repeat("?",Math.min(1,data.length()))+");";
+		if(datatype==DATATYPE_BOOLEAN)
+			return "SMALLINT";
+		else if(datatype==DATATYPE_DOUBLE)
+			return "DOUBLE";
+		else if(datatype==DATATYPE_STRING)
+			return "VARCHAR(32672)";
+		else throw new ApplicationException("Wrong datatype");
 	}
 	
-	private String constructInsertStatement()
+	private String constructVariableDeclarationListSQL() throws JSONException, ApplicationException
 	{
-		return "INSERT INTO "+path+"("+variableNameListSQL+") VALUES ("+StringUtils.repeat("?,", data.length()-1)+StringUtils.repeat("?",Math.min(1,data.length()))+");";
+		StringBuilder q = new StringBuilder();
+		String varname;
+		int vartype;
+		if(0<data.length())
+		{
+			varname=data.getJSONObject(0).getString("name");
+			vartype=data.getJSONObject(0).getInt("type");
+			q.append("\""+varname+"\"");
+			q.append(" "+constructVariableTypeDeclaration(vartype));
+		}
+		
+		for(int iVal=1; iVal<data.length(); iVal++)
+		{
+			varname=data.getJSONObject(iVal).getString("name");
+			vartype=data.getJSONObject(iVal).getInt("type");
+			q.append(",\""+varname+"\"");
+			q.append(" "+constructVariableTypeDeclaration(vartype));
+		}
+		
+		return q.toString();
+	}
+	
+	private String constructCreateStatement() throws ApplicationException
+	{
+		return "CREATE TABLE \""+path+"\"("+variableDeclarationListSQL+")";
+	}
+	
+	private String constructInsertStatement() throws ApplicationException
+	{
+		return "INSERT INTO \""+path+"\"("+variableNameListSQL+") VALUES ("+StringUtils.repeat("?,", data.length()-1)+StringUtils.repeat("?",Math.min(1,data.length()))+")";
 	}
 	
 	public GwasBioinfDataCache enterRow(JSONObject row) throws SQLException, ApplicationException
 	{
-		path = row.getString("path");
-		if(!path.matches("^[^\\s;\"\']+$"))
-			throw new ApplicationException("(Table) Path syntax error");
-		data = row.getJSONArray("data");
-		
+		return enterRows(new JSONArray().put(row));
+	}
+	
+	public GwasBioinfDataCache enterRows(JSONArray rows) throws SQLException, ApplicationException
+	{
+		JSONObject row;
+		if(rows.length()>0)
+		{
+			row=rows.getJSONObject(0);
+			path = row.getString("path");
+			assertDBString(path);
+			data = row.getJSONArray("data");
+			assertVarnames();
+		}
 		variableNameListSQL = constructVariableNameListSQL();
+		variableDeclarationListSQL=constructVariableDeclarationListSQL();
 		
-		insertStatement = con.prepareStatement(constructInsertStatement());
+		createStatement = con.prepareStatement(constructCreateStatement());
+		try
+		{
+			createStatement.execute();
+		}
+		catch (SQLException e)
+		{
+			//the table already exists
+		}
+		
+		for(int iRow=0; iRow<rows.length(); iRow++)
+		{
+			row=rows.getJSONObject(iRow);
+			data = row.getJSONArray("data");
+			assertVarnames();
+			insertStatement = con.prepareStatement(constructInsertStatement());
+			for(int iVar=0; iVar<data.length(); iVar++)
+			{
+				if(data.getJSONObject(iVar).getInt("type")==DATATYPE_BOOLEAN)
+					insertStatement.setInt(iVar+1, data.getJSONObject(iVar).getInt("value"));
+				else if(data.getJSONObject(iVar).getInt("type")==DATATYPE_DOUBLE)
+					insertStatement.setDouble(iVar+1, data.getJSONObject(iVar).getDouble("value"));
+				else if(data.getJSONObject(iVar).getInt("type")==DATATYPE_STRING)
+					insertStatement.setString(iVar+1, data.getJSONObject(iVar).getString("value"));
+				else throw new ApplicationException("Datatype conversion error.");
+			}
+			insertStatement.execute();
+		}
 		return this;
 	}
 

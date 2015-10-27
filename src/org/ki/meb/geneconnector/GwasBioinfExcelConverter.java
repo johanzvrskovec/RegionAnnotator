@@ -119,7 +119,7 @@ public class GwasBioinfExcelConverter
 					commonCellConversionActions();
 				}
 				
-				rowToAdd.append("data", variableValues);
+				rowToAdd.put("data", variableValues);
 				outputDataCache.enterRow(rowToAdd);
 			}
 			
@@ -136,7 +136,7 @@ public class GwasBioinfExcelConverter
 					commonCellConversionActions();
 				}
 				
-				rowToAdd.append("data", variableValues);
+				rowToAdd.put("data", variableValues);
 				outputDataCache.enterRow(rowToAdd);
 			}
 		}
@@ -157,29 +157,31 @@ public class GwasBioinfExcelConverter
 	private void commonCellConversionActions() throws ApplicationException
 	{
 		
-		if(!(currentCell.getCellType()==Cell.CELL_TYPE_BOOLEAN||currentCell.getCellType()==Cell.CELL_TYPE_NUMERIC||currentCell.getCellType()==Cell.CELL_TYPE_STRING))
-			throw new ApplicationException("Excel error at row number "+currentRow.getRowNum()+" and column index "+currentCell.getColumnIndex()+". The cell is of an incompatible type, or contains an error.");
+		int currentCellType = currentCell.getCellType();
+		//if(!(currentCellType==Cell.CELL_TYPE_BOOLEAN||currentCellType==Cell.CELL_TYPE_NUMERIC||currentCellType==Cell.CELL_TYPE_STRING))
+		if(currentCellType==Cell.CELL_TYPE_ERROR)
+			throw new ApplicationException("Excel error at row number "+currentRow.getRowNum()+" and column index "+currentCell.getColumnIndex()+". The cell contains an error or is of an incompatible type.");
 		
 		JSONObject variableValueToAdd = new JSONObject();
 		
 		variableValueToAdd.put("name", columnIndexVariableNameMap.get(currentCell.getColumnIndex()));
 		
-		if(columnIndexVariableTypeMap.get(currentCell.getColumnIndex())==Cell.CELL_TYPE_BOOLEAN)
+		if(columnIndexVariableTypeMap.get(currentCell.getColumnIndex())==Cell.CELL_TYPE_BOOLEAN || (columnIndexVariableTypeMap.get(currentCell.getColumnIndex())==Cell.CELL_TYPE_FORMULA && currentCell.getCachedFormulaResultType()==Cell.CELL_TYPE_BOOLEAN))
 		{
 			variableValueToAdd.put("type", GwasBioinfDataCache.DATATYPE_BOOLEAN);
 			variableValueToAdd.put("value", currentCell.getBooleanCellValue());
 		}
-		else if(columnIndexVariableTypeMap.get(currentCell.getColumnIndex())==Cell.CELL_TYPE_NUMERIC)
+		else if(columnIndexVariableTypeMap.get(currentCell.getColumnIndex())==Cell.CELL_TYPE_NUMERIC || (columnIndexVariableTypeMap.get(currentCell.getColumnIndex())==Cell.CELL_TYPE_FORMULA && currentCell.getCachedFormulaResultType()==Cell.CELL_TYPE_NUMERIC))
 		{
 			variableValueToAdd.put("type", GwasBioinfDataCache.DATATYPE_DOUBLE);
 			variableValueToAdd.put("value", currentCell.getNumericCellValue());
 		}
-		else if(columnIndexVariableTypeMap.get(currentCell.getColumnIndex())==Cell.CELL_TYPE_STRING)
+		else if(columnIndexVariableTypeMap.get(currentCell.getColumnIndex())==Cell.CELL_TYPE_STRING || (columnIndexVariableTypeMap.get(currentCell.getColumnIndex())==Cell.CELL_TYPE_FORMULA && currentCell.getCachedFormulaResultType()==Cell.CELL_TYPE_STRING))
 		{
 			variableValueToAdd.put("value", currentCell.getStringCellValue());
 			variableValueToAdd.put("type", GwasBioinfDataCache.DATATYPE_STRING);
 		}
-		else throw new ApplicationException("Column error. At row number "+currentRow.getRowNum()+" and column index "+currentCell.getColumnIndex());
+		else throw new ApplicationException("Column error - the cell is of an incompatible type. At row number "+currentRow.getRowNum()+" and column index "+currentCell.getColumnIndex());
 		
 		variableValues.put(variableValueToAdd);
 	}
