@@ -165,6 +165,7 @@ public class GwasBioinf
 	{
 		dataCache.createCacheConnection();
 		
+		//TODO
 		
 		dataCache.shutdownCacheConnection();
 	}

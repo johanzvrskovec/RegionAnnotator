@@ -140,13 +140,14 @@ public class GwasBioinfExcelConverter
 				outputDataCache.enterRow(rowToAdd);
 			}
 		}
-		
+		currentWorkbook.close();
 		return this;
 	}
 	
 	private void commonRowConversionActions() throws ApplicationException
 	{
 		rowToAdd=new JSONObject();
+		//rowToAdd.put("path", inputFile.getName()+"_"+currentSheet.getSheetName());
 		rowToAdd.put("path", currentSheet.getSheetName());
 		variableValues = new JSONArray();
 		
