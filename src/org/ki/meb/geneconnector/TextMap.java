@@ -43,6 +43,7 @@ public class TextMap
 	public static final String clear ="clear";
 	public static final String set ="set";
 	public static final String add ="add";
+	public static final String refresh ="refresh";
 	public static final String inputfolderpath ="inputfolderpath";
 	public static final String outputfolderpath ="outputfolderpath";
 	

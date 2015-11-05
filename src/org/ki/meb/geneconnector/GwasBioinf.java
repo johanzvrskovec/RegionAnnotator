@@ -1,6 +1,7 @@
 package org.ki.meb.geneconnector;
 import java.io.File;
 import java.io.FilenameFilter;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.sql.SQLException;
 
@@ -21,6 +22,11 @@ import org.apache.commons.configuration.tree.ConfigurationNode;
 
 import javax.jms.ConnectionFactory;
 import org.apache.camel.component.jms.JmsComponent;
+
+import org.apache.taverna.scufl2.api.container.WorkflowBundle;
+import org.apache.taverna.scufl2.api.core.Workflow;
+import org.apache.taverna.scufl2.api.io.ReaderException;
+import org.apache.taverna.scufl2.api.io.WorkflowBundleIO;
 
 //import getl.proc.Flow;
 
@@ -50,6 +56,7 @@ public class GwasBioinf
 		//clOptions.addOption(OptionBuilder.withArgName("property=value" ).hasArgs().withValueSeparator().withDescription( "Set a command structure property value." ).create(TextMap.set));
 		//clOptions.addOption(OptionBuilder.withArgName("type=structure" ).hasArgs().withValueSeparator().withDescription( "Add a type structure. The types are: "+TextMap.activity ).create(TextMap.add));
 		clOptions.addOption(TextMap.init,false,"Initiate the database content from input files");
+		clOptions.addOption(TextMap.refresh,false,"Refresh the database content from input files");
 		clOptions.addOption(TextMap.get,false,"Get the database content as exported output");
 		
 		
@@ -80,7 +87,8 @@ public class GwasBioinf
 		settingInputFolder = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.inputfolderpath).get(0)).getValue());
 		settingOutputFolder = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.outputfolderpath).get(0)).getValue());
 		settingCharsetEncodingText="UTF-8";
-		dataCache=new GwasBioinfDataCache();
+		dataCache=new GwasBioinfDataCache().setRefreshExistingTables(commandLine.hasOption(TextMap.refresh));
+		
 	}
 	
 	public static CommandLine constructCommandLine(String[] args) throws ParseException
@@ -168,6 +176,14 @@ public class GwasBioinf
 		//TODO
 		
 		dataCache.shutdownCacheConnection();
+	}
+	
+	private void performTavernaWorkflow() throws ReaderException, IOException
+	{
+		//TODO
+		WorkflowBundleIO io = new WorkflowBundleIO();
+		WorkflowBundle ro = io.readBundle(new File("workflow.t2flow"), null);
+		ro.getMainWorkflow();
 	}
 	
 	private GwasBioinf runCommands() throws Exception

@@ -3,6 +3,7 @@ package org.ki.meb.geneconnector;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 
 import org.apache.poi.ss.usermodel.Cell;
@@ -21,7 +22,7 @@ public class GwasBioinfExcelConverter
 	//private OutputStream output;
 	//private InputStream input;
 	private File inputFile;
-	private GwasBioinfDataCache outputDataCache;
+	private GwasBioinfDataCache dataCache;
 	private boolean settingFirstRowVariableNames;
 	
 	//conversion variables
@@ -29,13 +30,14 @@ public class GwasBioinfExcelConverter
 	private XSSFSheet currentSheet;
 	private Row currentRow;
 	private Cell currentCell;
-	private HashMap<Integer, String> columnIndexVariableNameMap;
-	private HashMap<Integer, Integer> columnIndexVariableTypeMap;
+	private JSONObject elementMeta;
+	//private HashMap<Integer, String> columnIndexVariableNameMap;
+	//private HashMap<Integer, Integer> columnIndexVariableTypeMap;
 	private Iterator<Row> rowIt;
 	private Iterator<Cell> cellIt;
 	private Short numVariablesPerRow;
 	private JSONObject rowToAdd;
-	private JSONArray variableValues;
+	private JSONObject variableValues;
 	
 	
 	private InputOutputType inputType,outputType;
@@ -73,7 +75,7 @@ public class GwasBioinfExcelConverter
 		if(outputType!=InputOutputType.database)
 			throw new ApplicationException("Wrong output for the configured output type. The output type is "+outputType.toString()+" and an attempt was made to set an OutputDataCache.");
 			
-		outputDataCache = nOutputDataCache;
+		dataCache = nOutputDataCache;
 		return this;
 	}
 	
@@ -81,12 +83,31 @@ public class GwasBioinfExcelConverter
 
 	public GwasBioinfExcelConverter convert() throws Exception 
 	{
+		
+		
+		int rowBufferSize = 100000;
+		
 		currentWorkbook = new XSSFWorkbook(inputFile);
 		for(int iSheet = 0; iSheet<currentWorkbook.getNumberOfSheets(); iSheet++)
 		{
 			currentSheet = currentWorkbook.getSheetAt(iSheet);
-			columnIndexVariableNameMap = new HashMap<Integer, String>();
-			columnIndexVariableTypeMap = new HashMap<Integer, Integer>();
+			if(dataCache.getHasTable(currentSheet.getSheetName())&&!dataCache.getRefreshExistingTables())
+				continue;
+			
+			JSONObject entry = new JSONObject();
+			elementMeta = new JSONObject();
+			JSONObject elementNameMap = new JSONObject();
+			JSONObject elementIndexNameMap = new JSONObject();
+			HashSet<String> typeset = new HashSet<String>();
+			JSONArray elementNameArray = new JSONArray();
+			elementMeta.put("path", currentSheet.getSheetName());
+			elementMeta.put("namemap",elementNameMap);
+			elementMeta.put("indexnamemap",elementIndexNameMap);
+			elementMeta.put("elementnamearray",elementNameArray);
+			
+			JSONArray rowBuffer=new JSONArray();
+			//columnIndexVariableNameMap = new HashMap<Integer, String>();
+			//columnIndexVariableTypeMap = new HashMap<Integer, Integer>();
 			numVariablesPerRow = null;
 			
 			rowIt = currentSheet.rowIterator();
@@ -101,27 +122,68 @@ public class GwasBioinfExcelConverter
 					currentCell = cellIt.next();
 					if(currentCell.getCellType()!=Cell.CELL_TYPE_STRING)
 						throw new ApplicationException("Excel error at row number "+currentRow.getRowNum()+" and column index "+currentCell.getColumnIndex());
-					columnIndexVariableNameMap.put(currentCell.getColumnIndex(),currentCell.getStringCellValue());
+					
+					
+					if(!elementNameMap.has(currentCell.getStringCellValue()))
+					{
+						JSONObject element = new JSONObject();
+						element.put("name", currentCell.getStringCellValue());
+						element.put("index", currentCell.getColumnIndex());
+						elementNameMap.putOnce(currentCell.getStringCellValue(), element);
+						elementIndexNameMap.putOnce(""+currentCell.getColumnIndex(), currentCell.getStringCellValue());
+						elementNameArray.put(currentCell.getStringCellValue());
+					}
 				}
 			}
 			
-			//set variable type from the first data row
-			if(rowIt.hasNext())
+			//set variable type from the first element that contains data
+			while(rowIt.hasNext())
 			{
 				currentRow = rowIt.next();
-				commonRowConversionActions();
-				
 				cellIt = currentRow.cellIterator();
 				while(cellIt.hasNext())
 				{
 					currentCell = cellIt.next();
-					columnIndexVariableTypeMap.put(currentCell.getColumnIndex(),currentCell.getCellType());
-					commonCellConversionActions();
+					if(currentCell.getCellType()!=Cell.CELL_TYPE_ERROR && currentCell.getCellType()!=Cell.CELL_TYPE_BLANK)
+					{
+						JSONObject element = elementIndexNameMap.getJSONObject(""+currentCell.getColumnIndex());
+						short typeToPut;
+						
+						if(currentCell.getCellType()==Cell.CELL_TYPE_BOOLEAN || (currentCell.getCellType()==Cell.CELL_TYPE_FORMULA && currentCell.getCachedFormulaResultType()==Cell.CELL_TYPE_BOOLEAN))
+						{
+							typeToPut= GwasBioinfDataCache.DATATYPE_BOOLEAN;
+						}
+						else if(currentCell.getCellType()==Cell.CELL_TYPE_NUMERIC || (currentCell.getCellType()==Cell.CELL_TYPE_FORMULA && currentCell.getCachedFormulaResultType()==Cell.CELL_TYPE_NUMERIC))
+						{
+							typeToPut= GwasBioinfDataCache.DATATYPE_DOUBLE;
+						}
+						else if(currentCell.getCellType()==Cell.CELL_TYPE_STRING || (currentCell.getCellType()==Cell.CELL_TYPE_FORMULA && currentCell.getCachedFormulaResultType()==Cell.CELL_TYPE_STRING))
+						{
+							typeToPut= GwasBioinfDataCache.DATATYPE_STRING;
+						}
+						else throw new ApplicationException("Column error - the cell is of an incompatible type. At row number "+currentRow.getRowNum()+" and column index "+currentCell.getColumnIndex());
+						
+						
+						element.putOnce("type", typeToPut);
+						typeset.add(element.getString("name"));
+						//columnIndexVariableTypeMap.putIfAbsent(currentCell.getColumnIndex(),currentCell.getCellType());
+					}
 				}
 				
-				rowToAdd.put("data", variableValues);
-				outputDataCache.enterRow(rowToAdd);
+				if(typeset.size()>=elementNameMap.length())
+					break;
 			}
+			
+			
+			
+			
+			//add metadata
+			entry.put("elementmeta", elementMeta);
+			
+			//restart
+			rowIt = currentSheet.rowIterator();
+			if(settingFirstRowVariableNames)
+				currentRow = rowIt.next();
 			
 			//convert the rest of the data
 			while(rowIt.hasNext())
@@ -137,7 +199,22 @@ public class GwasBioinfExcelConverter
 				}
 				
 				rowToAdd.put("data", variableValues);
-				outputDataCache.enterRow(rowToAdd);
+				if(rowBuffer.length()<rowBufferSize)
+				{
+					rowBuffer.put(rowToAdd);
+				}
+				else
+				{
+					entry.put("rows", rowBuffer);
+					dataCache.enter(entry);
+					rowBuffer=new JSONArray();
+				}
+			}
+			
+			if(rowBuffer.length()>0)
+			{
+				entry.put("rows", rowBuffer);
+				dataCache.enter(entry);	
 			}
 		}
 		currentWorkbook.close();
@@ -149,7 +226,7 @@ public class GwasBioinfExcelConverter
 		rowToAdd=new JSONObject();
 		//rowToAdd.put("path", inputFile.getName()+"_"+currentSheet.getSheetName());
 		rowToAdd.put("path", currentSheet.getSheetName());
-		variableValues = new JSONArray();
+		variableValues = new JSONObject();
 		
 		if(currentRow.getLastCellNum()!=numVariablesPerRow)
 			throw new ApplicationException("Excel error at row number "+currentRow.getRowNum()+". The row has an inconsistent length of "+currentRow.getLastCellNum()+", should be "+numVariablesPerRow);
@@ -157,34 +234,38 @@ public class GwasBioinfExcelConverter
 	
 	private void commonCellConversionActions() throws ApplicationException
 	{
-		
 		int currentCellType = currentCell.getCellType();
+		
 		//if(!(currentCellType==Cell.CELL_TYPE_BOOLEAN||currentCellType==Cell.CELL_TYPE_NUMERIC||currentCellType==Cell.CELL_TYPE_STRING))
 		if(currentCellType==Cell.CELL_TYPE_ERROR)
 			throw new ApplicationException("Excel error at row number "+currentRow.getRowNum()+" and column index "+currentCell.getColumnIndex()+". The cell contains an error or is of an incompatible type.");
 		
+		JSONObject elementNameMap = elementMeta.getJSONObject("namemap");
+		JSONObject indexMap = elementMeta.getJSONObject("indexnamemap");
+		JSONObject element =  elementNameMap.getJSONObject(indexMap.getString(""+currentCell.getColumnIndex()));
+		
 		JSONObject variableValueToAdd = new JSONObject();
+		String name = element.getString("name");
+		int type = element.getInt("type");
 		
-		variableValueToAdd.put("name", columnIndexVariableNameMap.get(currentCell.getColumnIndex()));
+		variableValueToAdd.put("name", name);
 		
-		if(columnIndexVariableTypeMap.get(currentCell.getColumnIndex())==Cell.CELL_TYPE_BOOLEAN || (columnIndexVariableTypeMap.get(currentCell.getColumnIndex())==Cell.CELL_TYPE_FORMULA && currentCell.getCachedFormulaResultType()==Cell.CELL_TYPE_BOOLEAN))
+		if(type==GwasBioinfDataCache.DATATYPE_BOOLEAN)
 		{
-			variableValueToAdd.put("type", GwasBioinfDataCache.DATATYPE_BOOLEAN);
 			variableValueToAdd.put("value", currentCell.getBooleanCellValue());
 		}
-		else if(columnIndexVariableTypeMap.get(currentCell.getColumnIndex())==Cell.CELL_TYPE_NUMERIC || (columnIndexVariableTypeMap.get(currentCell.getColumnIndex())==Cell.CELL_TYPE_FORMULA && currentCell.getCachedFormulaResultType()==Cell.CELL_TYPE_NUMERIC))
+		else if(type==Cell.CELL_TYPE_NUMERIC || (type==Cell.CELL_TYPE_FORMULA && currentCell.getCachedFormulaResultType()==Cell.CELL_TYPE_NUMERIC))
 		{
-			variableValueToAdd.put("type", GwasBioinfDataCache.DATATYPE_DOUBLE);
 			variableValueToAdd.put("value", currentCell.getNumericCellValue());
 		}
-		else if(columnIndexVariableTypeMap.get(currentCell.getColumnIndex())==Cell.CELL_TYPE_STRING || (columnIndexVariableTypeMap.get(currentCell.getColumnIndex())==Cell.CELL_TYPE_FORMULA && currentCell.getCachedFormulaResultType()==Cell.CELL_TYPE_STRING))
+		else if(type==Cell.CELL_TYPE_STRING || (type==Cell.CELL_TYPE_FORMULA && currentCell.getCachedFormulaResultType()==Cell.CELL_TYPE_STRING))
 		{
 			variableValueToAdd.put("value", currentCell.getStringCellValue());
-			variableValueToAdd.put("type", GwasBioinfDataCache.DATATYPE_STRING);
 		}
 		else throw new ApplicationException("Column error - the cell is of an incompatible type. At row number "+currentRow.getRowNum()+" and column index "+currentCell.getColumnIndex());
 		
-		variableValues.put(variableValueToAdd);
+		variableValueToAdd.put("type", type);
+		variableValues.put(name,variableValueToAdd);
 	}
 
 

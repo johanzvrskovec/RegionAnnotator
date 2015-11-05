@@ -3,6 +3,7 @@ package org.ki.meb.geneconnector;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import org.apache.commons.lang.StringUtils;
@@ -18,14 +19,21 @@ public class GwasBioinfDataCache
 	
 	private String cacheDBURL;
 	private Connection con;
+	private boolean settingRefreshExistingTables;
 	
 	private PreparedStatement createStatement;
 	private PreparedStatement insertStatement;
+	private PreparedStatement dropStatement;
 	
 	
 	//entry variables
-	private String path;
-	private JSONArray data;
+	private String tableName;
+	private JSONObject elementMeta;
+	private JSONObject elementNameMap;
+	private JSONObject elementIndexNameMap;
+	private JSONArray elementNameArray;
+	private JSONObject rowDataNameMap;
+	private JSONArray rowDataNameArray;
 	private String variableNameListSQL;
 	private String variableDeclarationListSQL;
 	
@@ -33,8 +41,12 @@ public class GwasBioinfDataCache
 	{
 		//cacheDBURL = "jdbc:derby:GwasBioinf;create=true;user=GwasBioinfInternal;password=GwasBioinfInternalPass";
 		cacheDBURL = "jdbc:derby:GwasBioinf;create=true;";
+		settingRefreshExistingTables=false;
 	}
 	
+	public GwasBioinfDataCache setRefreshExistingTables(boolean nSettingRefreshExistingTables){settingRefreshExistingTables=nSettingRefreshExistingTables; return this;}
+	public boolean getRefreshExistingTables(){return settingRefreshExistingTables;}
+
 	public GwasBioinfDataCache createCacheConnection() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException
     {
         Class.forName("org.apache.derby.jdbc.EmbeddedDriver").newInstance();
@@ -53,41 +65,55 @@ public class GwasBioinfDataCache
         return this;
     }
 	
-	private void assertDBString(String dbString) throws ApplicationException
+	private static void assertDBString(String dbString) throws ApplicationException
 	{
 		if(!dbString.matches("^[^\\s;\"\']+$"))
 			throw new ApplicationException("Database string error.");
 	}
 	
-	private void assertVarnames() throws ApplicationException
+	private void assertMeta() throws ApplicationException
 	{
+		assertDBString(tableName);
+		
 		String varname;
-		for(int iVal=0; iVal<data.length(); iVal++)
+		for(int iVal=0; iVal<elementNameArray.length(); iVal++)
 		{
-			varname = data.getJSONObject(iVal).getString("name");
+			varname = elementNameArray.getJSONObject(iVal).getString("name");
 			assertDBString(varname);
 		}
 	}
 	
-	private String constructVariableNameListSQL() throws ApplicationException
+	private void assertRowMeta() throws ApplicationException
+	{
+		if(elementNameArray.length()!=rowDataNameArray.length())
+			throw new ApplicationException("Incoherent element count");
+		
+		String varname;
+		for(int iVal=0; iVal<rowDataNameArray.length(); iVal++)
+		{
+			varname = rowDataNameArray.getJSONObject(iVal).getString("name");
+			assertDBString(varname);
+		}
+	}
+	
+	private void constructVariableNameListSQL() throws ApplicationException
 	{
 		StringBuilder q = new StringBuilder();
 		String varname;
-		if(0<data.length())
+		if(0<elementNameArray.length())
 		{
-			varname = data.getJSONObject(0).getString("name");
+			varname = elementNameArray.getJSONObject(0).getString("name");
 			q.append("\""+varname+"\"");
 		}
-		for(int iVal=1; iVal<data.length(); iVal++)
+		for(int iVal=1; iVal<elementNameArray.length(); iVal++)
 		{
-			varname = data.getJSONObject(iVal).getString("name");
+			varname = elementNameArray.getJSONObject(iVal).getString("name");
 			q.append(",\""+varname+"\"");
 		}
-		
-		return q.toString();
+		variableNameListSQL=q.toString();
 	}
 	
-	private String constructVariableTypeDeclaration(int datatype) throws ApplicationException
+	private static String getVariableTypeDeclaration(int datatype) throws ApplicationException
 	{
 		if(datatype==DATATYPE_BOOLEAN)
 			return "SMALLINT";
@@ -98,84 +124,149 @@ public class GwasBioinfDataCache
 		else throw new ApplicationException("Wrong datatype");
 	}
 	
-	private String constructVariableDeclarationListSQL() throws JSONException, ApplicationException
+	private void constructVariableDeclarationListSQL() throws JSONException, ApplicationException
 	{
 		StringBuilder q = new StringBuilder();
 		String varname;
 		int vartype;
-		if(0<data.length())
+		if(0<elementNameArray.length())
 		{
-			varname=data.getJSONObject(0).getString("name");
-			vartype=data.getJSONObject(0).getInt("type");
+			varname=elementNameArray.getJSONObject(0).getString("name");
+			vartype=elementNameArray.getJSONObject(0).getInt("type");
 			q.append("\""+varname+"\"");
-			q.append(" "+constructVariableTypeDeclaration(vartype));
+			q.append(" "+getVariableTypeDeclaration(vartype));
 		}
 		
-		for(int iVal=1; iVal<data.length(); iVal++)
+		for(int iVal=1; iVal<elementNameArray.length(); iVal++)
 		{
-			varname=data.getJSONObject(iVal).getString("name");
-			vartype=data.getJSONObject(iVal).getInt("type");
+			varname=elementNameArray.getJSONObject(iVal).getString("name");
+			vartype=elementNameArray.getJSONObject(iVal).getInt("type");
 			q.append(",\""+varname+"\"");
-			q.append(" "+constructVariableTypeDeclaration(vartype));
+			q.append(" "+getVariableTypeDeclaration(vartype));
 		}
-		
-		return q.toString();
+		variableDeclarationListSQL = q.toString();
 	}
 	
 	private String constructCreateStatement() throws ApplicationException
 	{
-		return "CREATE TABLE \""+path+"\"("+variableDeclarationListSQL+")";
+		return "CREATE TABLE \""+tableName+"\"("+variableDeclarationListSQL+")";
 	}
 	
 	private String constructInsertStatement() throws ApplicationException
 	{
-		return "INSERT INTO \""+path+"\"("+variableNameListSQL+") VALUES ("+StringUtils.repeat("?,", data.length()-1)+StringUtils.repeat("?",Math.min(1,data.length()))+")";
+		
+		return "INSERT INTO \""+tableName+"\"("+variableNameListSQL+") VALUES ("+StringUtils.repeat("?,", elementNameArray.length()-1)+StringUtils.repeat("?",Math.max(Math.min(1,elementNameArray.length()),1))+")";
 	}
 	
-	public GwasBioinfDataCache enterRow(JSONObject row) throws SQLException, ApplicationException
+	public boolean getHasTable(String name) throws ApplicationException, SQLException
 	{
-		return enterRows(new JSONArray().put(row));
+		assertDBString(name);
+		ResultSet rs = con.getMetaData().getTables(null, null, name, new String[]{"TABLE"});
+		boolean result =  rs.next();
+		rs.close();
+		return result;
 	}
 	
-	public GwasBioinfDataCache enterRows(JSONArray rows) throws SQLException, ApplicationException
+	public GwasBioinfDataCache enter(JSONObject entry) throws SQLException, ApplicationException
 	{
 		JSONObject row;
-		if(rows.length()>0)
+		JSONArray rows = entry.getJSONArray("rows");
+		if(rows.length()<=0)
+			return this;
+		
+		//construct element meta
+		if(entry.has("elementmeta"))
+			elementMeta = entry.getJSONObject("elementmeta");
+		else
+			elementMeta=new JSONObject();
+		
+		//construct required meta from rows
+		if(!elementMeta.has("namemap")||!elementMeta.has("indexmap")||!elementMeta.has("elementarray")||!elementMeta.has("path"))
 		{
-			row=rows.getJSONObject(0);
-			path = row.getString("path");
-			assertDBString(path);
-			data = row.getJSONArray("data");
-			assertVarnames();
+			for(int iRow=0; iRow<rows.length(); iRow++ )
+			{
+				row=rows.getJSONObject(iRow);
+				JSONObject rowData = row.getJSONObject("data");
+				JSONArray elements = rowData.toJSONArray(rowData.names());
+				elementMeta.putOnce("path",row.getString("path"));
+				elementNameMap = new JSONObject();
+				elementMeta.putOnce("namemap",elementNameMap);
+				elementIndexNameMap = new JSONObject();
+				elementMeta.putOnce("indenamexmap",elementIndexNameMap);
+				elementNameArray=new JSONArray();
+				elementMeta.putOnce("elementnamearray",elementNameArray);
+				
+				for(int ie=0; ie<elements.length(); ie++)
+				{
+					JSONObject re = rowData.getJSONObject(elements.getString(ie));
+					JSONObject e = new JSONObject();
+					e.put("name", re.getString("name"));
+					e.put("type", re.getString("type"));
+					e.put("index", re.getString("index"));
+					elementNameMap.putOnce(e.getString("name"),e);
+					elementIndexNameMap.putOnce(e.getString("index"),e.getString("name"));
+					elementNameArray.put(e.getString("name"));
+				}
+				
+			}
+			
 		}
-		variableNameListSQL = constructVariableNameListSQL();
-		variableDeclarationListSQL=constructVariableDeclarationListSQL();
+		
+		assertMeta();
+		
+		constructVariableNameListSQL();
+		constructVariableDeclarationListSQL();
 		
 		createStatement = con.prepareStatement(constructCreateStatement());
-		try
+		
+		
+		boolean tablePreExists = getHasTable(tableName);
+		
+		if(tablePreExists)
 		{
-			createStatement.execute();
+			if(settingRefreshExistingTables)
+			{
+				dropStatement=con.prepareStatement("DROP TABLE \""+tableName+"\"");
+				dropStatement.execute();
+			}
+			else
+				return this;
 		}
-		catch (SQLException e)
-		{
-			//the table already exists
-		}
+		
+		createStatement.execute();
+		
 		
 		for(int iRow=0; iRow<rows.length(); iRow++)
 		{
 			row=rows.getJSONObject(iRow);
-			data = row.getJSONArray("data");
-			assertVarnames();
+			rowDataNameMap = row.getJSONObject("data");
+			rowDataNameArray = rowDataNameMap.toJSONArray(rowDataNameMap.names());
+			assertRowMeta();
 			insertStatement = con.prepareStatement(constructInsertStatement());
-			for(int iVar=0; iVar<data.length(); iVar++)
+			for(int iVar=0; iVar<elementNameArray.length(); iVar++)
 			{
-				if(data.getJSONObject(iVar).getInt("type")==DATATYPE_BOOLEAN)
-					insertStatement.setInt(iVar+1, data.getJSONObject(iVar).getInt("value"));
-				else if(data.getJSONObject(iVar).getInt("type")==DATATYPE_DOUBLE)
-					insertStatement.setDouble(iVar+1, data.getJSONObject(iVar).getDouble("value"));
-				else if(data.getJSONObject(iVar).getInt("type")==DATATYPE_STRING)
-					insertStatement.setString(iVar+1, data.getJSONObject(iVar).getString("value"));
-				else throw new ApplicationException("Datatype conversion error.");
+				JSONObject e = elementNameMap.getJSONObject(elementNameArray.getString(iVar));
+				if(rowDataNameMap.has(e.getString("name")))
+				{
+					JSONObject re = rowDataNameMap.getJSONObject(rowDataNameArray.getString(iVar));
+					if(e.getInt("type")==DATATYPE_BOOLEAN&&re.getInt("type")==DATATYPE_BOOLEAN)
+						insertStatement.setInt(iVar+1, re.getInt("value"));
+					else if(e.getInt("type")==DATATYPE_DOUBLE && re.getInt("type")==DATATYPE_DOUBLE)
+						insertStatement.setDouble(iVar+1, re.getDouble("value"));
+					else if(e.getInt("type")==DATATYPE_STRING && re.getInt("type")==DATATYPE_STRING)
+						insertStatement.setString(iVar+1, re.getString("value"));
+					else throw new ApplicationException("Datatype coherencey error.");
+				}
+				else
+				{
+					if(e.getInt("type")==DATATYPE_BOOLEAN)
+						insertStatement.setNull(iVar+1, java.sql.Types.INTEGER);
+					else if(e.getInt("type")==DATATYPE_DOUBLE)
+						insertStatement.setNull(iVar+1, java.sql.Types.DOUBLE);
+					else if(e.getInt("type")==DATATYPE_STRING)
+						insertStatement.setNull(iVar+1, java.sql.Types.LONGVARCHAR);
+					else throw new ApplicationException("Datatype coherencey error.");
+				}
 			}
 			insertStatement.execute();
 		}
