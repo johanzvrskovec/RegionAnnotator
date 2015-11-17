@@ -236,8 +236,9 @@ public class GwasBioinfCustomInputReader
 		rowToAdd.put("path", currentSheet.getSheetName());
 		variableValues = new JSONObject();
 		
-		if(currentRow.getLastCellNum()!=numVariablesPerRow)
-			throw new ApplicationException("Excel error at row number "+currentRow.getRowNum()+". The row has an inconsistent length of "+currentRow.getLastCellNum()+", should be "+numVariablesPerRow);
+		//This should be handled when entering data if sufficient column info
+		//if(currentRow.getLastCellNum()!=numVariablesPerRow)
+			//throw new ApplicationException("Excel error at row number "+currentRow.getRowNum()+". The row has an inconsistent length of "+currentRow.getLastCellNum()+", should be "+numVariablesPerRow);
 	}
 	
 	private void commonCellConversionActions() throws ApplicationException
