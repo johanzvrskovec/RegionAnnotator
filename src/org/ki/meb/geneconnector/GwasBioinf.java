@@ -158,13 +158,13 @@ public class GwasBioinf
 	//Legacy POI version
 	private void initDataFromFiles() throws ApplicationException, Exception
 	{
-		GwasBioinfExcelConverter converter = new GwasBioinfExcelConverter();
+		GwasBioinfCustomInputReader inputReader = new GwasBioinfCustomInputReader();
 		dataCache.createCacheConnection();
 		//import all files in input
 		File[] inputFiles = settingInputFolder.listFiles(filterExcelXlsx);
 		for(int iFile=0; iFile<inputFiles.length; iFile++)
 		{
-			converter.setOutputDataCache(dataCache).setInputFile(inputFiles[iFile]).convert();
+			inputReader.setOutputDataCache(dataCache).setInputFile(inputFiles[iFile]).read();
 		}
 		dataCache.shutdownCacheConnection();
 	}
