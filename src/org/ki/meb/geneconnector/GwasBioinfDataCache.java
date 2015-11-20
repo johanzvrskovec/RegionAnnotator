@@ -46,11 +46,12 @@ public class GwasBioinfDataCache
 	public GwasBioinfDataCache setRefreshExistingTables(boolean nSettingRefreshExistingTables){settingRefreshExistingTables=nSettingRefreshExistingTables; return this;}
 	public boolean getRefreshExistingTables(){return settingRefreshExistingTables;}
 
-	public GwasBioinfDataCache createCacheConnection() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException
+	public GwasBioinfDataCache createCacheConnection() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException
     {
         Class.forName("org.apache.derby.jdbc.EmbeddedDriver").newInstance();
         //Get a connection
         con = DriverManager.getConnection(cacheDBURL);
+        rebuildCommonArchitecture();
         return this;
     }
 	
@@ -162,8 +163,27 @@ public class GwasBioinfDataCache
 		return result;
 	}
 	
-	public GwasBioinfDataCache enter(JSONObject entry) throws SQLException, ApplicationException
+	public boolean getHasFunction(String name) throws ApplicationException, SQLException
 	{
+		assertDBString(name);
+		ResultSet rs = con.getMetaData().getFunctions(null, null, name);
+		boolean result =  rs.next();
+		rs.close();
+		return result;
+	}
+	
+	private void rebuildCommonArchitecture() throws ApplicationException, SQLException
+	{
+		if(!getHasFunction("stringSeparateFixedSpacing"))
+		{
+			createStatement=con.prepareStatement("CREATE FUNCTION stringSeparateFixedSpacing(target VARCHAR(32672),separator VARCHAR(50),spacing INT) RETURNS VARCHAR(32672) PARAMETER STYLE JAVA NO SQL LANGUAGE JAVA DETERMINISTIC EXTERNAL NAME 'org.ki.meb.geneconnector.Utils.stringSeparateFixedSpacing'");
+			createStatement.execute();
+		}
+		
+	}
+	
+	public GwasBioinfDataCache enter(JSONObject entry) throws SQLException, ApplicationException
+	{	
 		JSONObject row;
 		JSONArray rows = entry.getJSONArray("rows");
 		if(rows.length()<=0)
@@ -297,5 +317,15 @@ public class GwasBioinfDataCache
 		}
 		return this;
 	}
-
+	
+	public GwasBioinfDataCache linkGenes() throws SQLException
+	{
+		//create candidate genes
+		
+		String sql_prepareCandidateGenes = "";
+		PreparedStatement prepstat_createCandidateGenes = con.prepareStatement(sql_prepareCandidateGenes);
+		
+		
+		return this;
+	}
 }

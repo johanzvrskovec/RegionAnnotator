@@ -27,6 +27,7 @@ public class TextMap
 	public static final String get ="get";
 	public static final String left ="left";
 	public static final String right ="right";
+	public static final String link ="link";
 	public static final String submit ="submit";
 	public static final String dataset ="dataset";
 	public static final String datasetname ="datasetname";

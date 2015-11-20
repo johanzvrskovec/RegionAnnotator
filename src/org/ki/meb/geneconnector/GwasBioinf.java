@@ -57,6 +57,7 @@ public class GwasBioinf
 		//clOptions.addOption(OptionBuilder.withArgName("type=structure" ).hasArgs().withValueSeparator().withDescription( "Add a type structure. The types are: "+TextMap.activity ).create(TextMap.add));
 		clOptions.addOption(TextMap.init,false,"Initiate the database content from input files");
 		clOptions.addOption(TextMap.refresh,false,"Refresh the database content from input files");
+		clOptions.addOption(TextMap.link,false,"Perform gene linkage steps");
 		clOptions.addOption(TextMap.get,false,"Get the database content as exported output");
 		
 		
@@ -169,7 +170,7 @@ public class GwasBioinf
 		dataCache.shutdownCacheConnection();
 	}
 	
-	private void getData() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException
+	private void getData() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException
 	{
 		dataCache.createCacheConnection();
 		
@@ -211,12 +212,27 @@ public class GwasBioinf
 			initDataFromFiles();
 		}
 		
+		if(commandLine.hasOption(TextMap.link))
+		{
+			
+		}
+		
 		if(commandLine.hasOption(TextMap.get))
 		{
 			getData();
 		}
 		
 		return this;
+	}
+	
+	
+	private void linkGeneActions() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException
+	{
+		dataCache.createCacheConnection();
+		
+		
+		
+		dataCache.shutdownCacheConnection();
 	}
 	
 }
