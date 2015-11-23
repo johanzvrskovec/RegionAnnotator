@@ -188,6 +188,13 @@ public class GwasBioinfDataCache
 		
 	}
 	
+	public GwasBioinfDataCache dropTable(String tableName) throws SQLException
+	{
+		PreparedStatement ds=con.prepareStatement("DROP TABLE \""+tableName+"\"");
+		ds.execute();
+		return this;
+	}
+	
 	public GwasBioinfDataCache enter(JSONObject entry) throws SQLException, ApplicationException
 	{	
 		JSONObject row;
@@ -324,16 +331,29 @@ public class GwasBioinfDataCache
 		return this;
 	}
 	
-	public GwasBioinfDataCache linkGenes() throws SQLException
+	public GwasBioinfDataCache dataset(String name, String query) throws ApplicationException, SQLException
 	{
+		if(getHasTable(name))
+		{
+			dropTable(name);
+		}
+		
+		PreparedStatement ps = con.prepareStatement("CREATE TABLE \""+name+"\" AS "+query+" WITH NO DATA");
+		ps.execute();
+		ps = con.prepareStatement("INSERT INTO \"candidate\" "+query);
+		ps.execute();
+		
+		return this;
+	}
+	
+	public GwasBioinfDataCache linkGenes() throws SQLException, ApplicationException
+	{
+		String q;
+		
 		//create candidate genes
-		
-		String sql_prepareCandidateGenes = "SELECT \"mdd2clumpraw\".*,STRINGSEPARATEFIXEDSPACING('asdfihasdfh',',',3) AS \"six1test\"  FROM app.\"mdd2clumpraw\" WHERE \"p\">0 AND \"p\"<1e-5";
-		//String sql_prepareCandidateGenes = "VALUES STRINGSEPARATEFIXEDSPACING('asdfihasdfh',',',3)";
-		PreparedStatement prepstat_createCandidateGenes = con.prepareStatement(sql_prepareCandidateGenes);
-		ResultSet r = prepstat_createCandidateGenes.executeQuery();
-		
-		System.out.println("Result>"+r.getMetaData().getColumnCount());
+		q = "SELECT \"mdd2clumpraw\".*,STRINGSEPARATEFIXEDSPACING('asdfihasdfh',',',3) AS \"six1test\"  FROM app.\"mdd2clumpraw\" WHERE \"p\">0 AND \"p\"<1e-5";
+		dataset("candidate", q);
+		con.commit();
 		
 		return this;
 	}
