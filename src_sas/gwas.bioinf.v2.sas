@@ -24,6 +24,7 @@ guessingrows=32767;
 run;
 
 * Export existing data *;
+/*
 proc export data=md.mdd2clumpraw outfile="C:\Media\work\eclipse\gwas_bioinf\input\md.xlsx" dbms=xlsx replace;
 sheet="mdd2clumpraw";
 run;
@@ -57,6 +58,7 @@ run;
 proc export data=gm.psych_linkage outfile="C:\Media\work\eclipse\gwas_bioinf\input\gm.xlsx" dbms=xlsx replace;
 sheet="psych_linkage";
 run;
+*/
 
 data candidate;
   length snpid $20 a1a2 $6 ll $40 or p 8 cc $40 ucsc $200 r0 $5;

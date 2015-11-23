@@ -160,23 +160,18 @@ public class GwasBioinf
 	private void initDataFromFiles() throws ApplicationException, Exception
 	{
 		GwasBioinfCustomInputReader inputReader = new GwasBioinfCustomInputReader();
-		dataCache.createCacheConnection();
 		//import all files in input
 		File[] inputFiles = settingInputFolder.listFiles(filterExcelXlsx);
 		for(int iFile=0; iFile<inputFiles.length; iFile++)
 		{
 			inputReader.setOutputDataCache(dataCache).setInputFile(inputFiles[iFile]).read();
 		}
-		dataCache.shutdownCacheConnection();
 	}
 	
 	private void getData() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException
 	{
-		dataCache.createCacheConnection();
-		
+
 		//TODO
-		
-		dataCache.shutdownCacheConnection();
 	}
 	
 	private void performTavernaWorkflow() throws ReaderException, IOException
@@ -206,6 +201,8 @@ public class GwasBioinf
 		
 		init();
 		
+		dataCache.createCacheConnection();
+		
 		if(commandLine.hasOption(TextMap.init))
 		{
 			//initDataFromFiles_camel();
@@ -214,7 +211,7 @@ public class GwasBioinf
 		
 		if(commandLine.hasOption(TextMap.link))
 		{
-			
+			linkGeneActions();
 		}
 		
 		if(commandLine.hasOption(TextMap.get))
@@ -222,17 +219,15 @@ public class GwasBioinf
 			getData();
 		}
 		
+		dataCache.shutdownCacheConnection();
+		
 		return this;
 	}
 	
 	
 	private void linkGeneActions() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException
 	{
-		dataCache.createCacheConnection();
-		
-		
-		
-		dataCache.shutdownCacheConnection();
+		dataCache.linkGenes();
 	}
 	
 }

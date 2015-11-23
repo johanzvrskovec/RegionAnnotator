@@ -1,6 +1,6 @@
-package org.ki.meb.geneconnector;
 
-public class Utils 
+
+public class DbUtils 
 {
 
 	//public Utils() {}

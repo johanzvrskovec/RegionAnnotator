@@ -39,7 +39,7 @@ public class GwasBioinfDataCache
 	public GwasBioinfDataCache() 
 	{
 		//cacheDBURL = "jdbc:derby:GwasBioinf;create=true;user=GwasBioinfInternal;password=GwasBioinfInternalPass";
-		cacheDBURL = "jdbc:derby:GwasBioinf;create=true;";
+		cacheDBURL = "jdbc:derby:GwasBioinf";
 		settingRefreshExistingTables=false;
 	}
 	
@@ -50,16 +50,20 @@ public class GwasBioinfDataCache
     {
         Class.forName("org.apache.derby.jdbc.EmbeddedDriver").newInstance();
         //Get a connection
-        con = DriverManager.getConnection(cacheDBURL);
+        con = DriverManager.getConnection(cacheDBURL+";create=true;");
+        con.setAutoCommit(false);
         rebuildCommonArchitecture();
+        con.commit();
         return this;
     }
 	
 	public GwasBioinfDataCache shutdownCacheConnection() throws SQLException
     {
-        if (con != null)
+        if (con != null&&!con.isClosed())
         {
+        	con.setAutoCommit(false);
             DriverManager.getConnection(cacheDBURL + ";shutdown=true");
+            con.commit();
             con.close();
         }
         return this;
@@ -172,11 +176,13 @@ public class GwasBioinfDataCache
 		return result;
 	}
 	
+	//private void dropFunction(String functionName)
+	
 	private void rebuildCommonArchitecture() throws ApplicationException, SQLException
 	{
-		if(!getHasFunction("stringSeparateFixedSpacing"))
+		if(!getHasFunction("stringSeparateFixedSpacing".toUpperCase()))
 		{
-			createStatement=con.prepareStatement("CREATE FUNCTION stringSeparateFixedSpacing(target VARCHAR(32672),separator VARCHAR(50),spacing INT) RETURNS VARCHAR(32672) PARAMETER STYLE JAVA NO SQL LANGUAGE JAVA DETERMINISTIC EXTERNAL NAME 'org.ki.meb.geneconnector.Utils.stringSeparateFixedSpacing'");
+			createStatement=con.prepareStatement("CREATE FUNCTION stringSeparateFixedSpacing(target VARCHAR(32672),separator VARCHAR(50),spacing INT) RETURNS VARCHAR(32672) PARAMETER STYLE JAVA NO SQL LANGUAGE JAVA EXTERNAL NAME 'org.ki.meb.geneconnector.Utils.stringSeparateFixedSpacing'");
 			createStatement.execute();
 		}
 		
@@ -322,9 +328,12 @@ public class GwasBioinfDataCache
 	{
 		//create candidate genes
 		
-		String sql_prepareCandidateGenes = "";
+		String sql_prepareCandidateGenes = "SELECT \"mdd2clumpraw\".*,STRINGSEPARATEFIXEDSPACING('asdfihasdfh',',',3) AS \"six1test\"  FROM app.\"mdd2clumpraw\" WHERE \"p\">0 AND \"p\"<1e-5";
+		//String sql_prepareCandidateGenes = "VALUES STRINGSEPARATEFIXEDSPACING('asdfihasdfh',',',3)";
 		PreparedStatement prepstat_createCandidateGenes = con.prepareStatement(sql_prepareCandidateGenes);
+		ResultSet r = prepstat_createCandidateGenes.executeQuery();
 		
+		System.out.println("Result>"+r.getMetaData().getColumnCount());
 		
 		return this;
 	}
