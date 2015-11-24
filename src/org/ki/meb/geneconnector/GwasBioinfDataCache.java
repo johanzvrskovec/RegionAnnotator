@@ -364,11 +364,12 @@ public class GwasBioinfDataCache
 		//q = "SELECT \"mdd2clumpraw\".*,STRINGSEPARATEFIXEDSPACINGRIGHT(CAST(CHAR(\"six1\") AS VARCHAR(32672) ) ,',',3) AS \"cc\" FROM app.\"mdd2clumpraw\" WHERE \"p\">0 AND \"p\"<1e-5";
 		//q = "SELECT TRIM(CAST(CAST(CAST(\"six1\" AS DECIMAL(25,0)) AS CHAR(38)) AS VARCHAR(32672))) AS \"six1varchar\",STRINGSEPARATEFIXEDSPACINGRIGHT(TRIM(CAST(CAST(CAST(\"six1\" AS DECIMAL(25,0)) AS CHAR(38)) AS VARCHAR(32672))),',',3) AS \"cc\" FROM app.\"mdd2clumpraw\" WHERE \"p\">0 AND \"p\"<1e-5";
 		q.append("SELECT ");
+		q.append("ROW_NUMBER() OVER() AS \"nrank\", \"sub\".* FROM (SELECT ");
 		q.append(scriptSeparateFixedSpacingRight(scriptDoubleToVarchar("six1"),",", 3)+"||'-'||"+scriptSeparateFixedSpacingRight(scriptDoubleToVarchar("six2"),",", 3)+" AS \"ll\",");
 		q.append("\"hg19chrc\" AS \"nr0\", \"six1\" AS \"nr1\", \"six2\" AS \"nr2\",");
 		q.append("\"hg19chrc\"||':'||"+scriptSeparateFixedSpacingRight(scriptDoubleToVarchar("six1"),",", 3)+"||'-'||"+scriptSeparateFixedSpacingRight(scriptDoubleToVarchar("six2"),",", 3)+" AS \"cc\",");
 		q.append("'=HYPERLINK(\"http://genome.ucsc.edu/cgi-bin/hgTracks?&org=Human&db=hg19&position='||\"hg19chrc\"||'%3A'||"+scriptDoubleToVarchar("six1")+"||'-'||"+scriptDoubleToVarchar("six2")+"||'\",\"ucsc\")' AS \"nucsc\",");
-		q.append("\"mdd2clumpraw\".* FROM app.\"mdd2clumpraw\" WHERE \"p\">0 AND \"p\"<1e-5");
+		q.append("\"mdd2clumpraw\".* FROM app.\"mdd2clumpraw\" WHERE \"p\">0 AND \"p\"<1e-5 ORDER BY \"p\") AS \"sub\"");
 		dataset("candidate", q.toString());
 		con.commit();
 		
