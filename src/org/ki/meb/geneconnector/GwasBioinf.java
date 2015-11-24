@@ -10,6 +10,7 @@ import org.apache.camel.CamelContext;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.impl.DefaultCamelContext;
+import org.apache.camel.impl.DefaultPackageScanClassResolver;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -27,6 +28,7 @@ import org.apache.taverna.scufl2.api.container.WorkflowBundle;
 import org.apache.taverna.scufl2.api.core.Workflow;
 import org.apache.taverna.scufl2.api.io.ReaderException;
 import org.apache.taverna.scufl2.api.io.WorkflowBundleIO;
+import org.h2.upgrade.DbUpgrade;
 
 //import getl.proc.Flow;
 
@@ -102,6 +104,7 @@ public class GwasBioinf
 	
 	public static void main(String[] args) throws Exception
 	{
+		//System.out.println("TEST>"+Utils.stringSeparateFixedSpacingRight("abcdefg", ",", 3));
 		new GwasBioinf().setCommandLine(constructCommandLine(args)).runCommands();
 	}
 	

@@ -5,7 +5,7 @@ public class Utils
 
 	//public Utils() {}
 	
-	public static String stringSeparateFixedSpacing(String target, String separator, int spacing)
+	public static String stringSeparateFixedSpacingLeft(String target, String separator, int spacing)
 	{
 		StringBuilder result = new StringBuilder();
 		
@@ -17,6 +17,23 @@ public class Utils
 				result.append(target.substring(is, is+spacing));
 			else
 				result.append(target.substring(is));
+		}
+		
+		return result.toString();
+	}
+	
+	public static String stringSeparateFixedSpacingRight(String target, String separator, int spacing)
+	{
+		StringBuilder result = new StringBuilder();
+		
+		for(int is=target.length(); is>0; is-=spacing)
+		{
+			if(is!=target.length())
+				result.insert(0,separator);
+			if(is-spacing>=0)
+				result.insert(0,target.substring(is-spacing, is));
+			else
+				result.insert(0,target.substring(0, is));
 		}
 		
 		return result.toString();
