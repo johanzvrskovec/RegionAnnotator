@@ -14,14 +14,14 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 
-public class GwasBioinfCustomInputReader
+public class GwasBioinfCustomFormatter
 {
 	
 	public static enum InputOutputType {database,excel};
 	
 	//private OutputStream output;
 	//private InputStream input;
-	private File inputFile;
+	private File inputFile, outputFile;
 	private GwasBioinfDataCache dataCache;
 	private boolean settingFirstRowVariableNames;
 	
@@ -38,33 +38,32 @@ public class GwasBioinfCustomInputReader
 	//private HashMap<Integer, Integer> columnIndexVariableTypeMap;
 	private Iterator<Row> rowIt;
 	private Iterator<Cell> cellIt;
-	private Short numVariablesPerRow;
 	private JSONObject rowToAdd;
 	private JSONObject variableValues;
 	
 	
 	private InputOutputType inputType,outputType;
 	
-	public GwasBioinfCustomInputReader() 
+	public GwasBioinfCustomFormatter() 
 	{
 		inputType=InputOutputType.excel;
 		outputType=InputOutputType.database;
 		settingFirstRowVariableNames=true;
 	}
 	
-	public GwasBioinfCustomInputReader setInputType(InputOutputType nInputType)
+	public GwasBioinfCustomFormatter setInputType(InputOutputType nInputType)
 	{
 		inputType=nInputType;
 		return this;
 	}
 	
-	public GwasBioinfCustomInputReader setOutputType(InputOutputType nOutputType)
+	public GwasBioinfCustomFormatter setOutputType(InputOutputType nOutputType)
 	{
 		outputType=nOutputType;
 		return this;
 	}
 	
-	public GwasBioinfCustomInputReader setInputFile(File nFile) throws ApplicationException
+	public GwasBioinfCustomFormatter setInputFile(File nFile) throws ApplicationException
 	{
 		if(inputType!=InputOutputType.excel)
 			throw new ApplicationException("Wrong input for the configured input type. The input type is "+inputType.toString()+" and an attempt was made to set an InputFile.");
@@ -73,18 +72,27 @@ public class GwasBioinfCustomInputReader
 		return this;
 	}
 	
-	public GwasBioinfCustomInputReader setOutputDataCache(GwasBioinfDataCache nOutputDataCache) throws ApplicationException
+	public GwasBioinfCustomFormatter setOutputFile(File nFile) throws ApplicationException
 	{
-		if(outputType!=InputOutputType.database)
-			throw new ApplicationException("Wrong output for the configured output type. The output type is "+outputType.toString()+" and an attempt was made to set an OutputDataCache.");
+		if(outputType!=InputOutputType.excel)
+			throw new ApplicationException("Wrong output for the configured output type. The output type is "+outputType.toString()+" and an attempt was made to set an OutputFile.");
 			
-		dataCache = nOutputDataCache;
+		outputFile = nFile;
+		return this;
+	}
+	
+	public GwasBioinfCustomFormatter setDataCache(GwasBioinfDataCache nDataCache) throws ApplicationException
+	{
+		if(outputType!=InputOutputType.database||inputType!=InputOutputType.database)
+			throw new ApplicationException("Wrong input/output for the configured input/output type. The input type is "+inputType.toString()+", output type is "+outputType.toString()+", and an attempt was made to set a DataCache.");
+			
+		dataCache = nDataCache;
 		return this;
 	}
 	
 	
 
-	public GwasBioinfCustomInputReader read() throws Exception 
+	public GwasBioinfCustomFormatter read() throws Exception 
 	{
 		
 		if(inputType==InputOutputType.excel&&outputType==InputOutputType.database)
@@ -113,14 +121,12 @@ public class GwasBioinfCustomInputReader
 				JSONArray rowBuffer=new JSONArray();
 				//columnIndexVariableNameMap = new HashMap<Integer, String>();
 				//columnIndexVariableTypeMap = new HashMap<Integer, Integer>();
-				numVariablesPerRow = null;
-				
+
 				rowIt = currentSheet.rowIterator();
 				//set variable names and number of variables
 				if(settingFirstRowVariableNames && rowIt.hasNext())
 				{
 					currentRow = rowIt.next();
-					numVariablesPerRow= currentRow.getLastCellNum();
 					cellIt = currentRow.cellIterator();
 					while(cellIt.hasNext())
 					{
@@ -226,8 +232,19 @@ public class GwasBioinfCustomInputReader
 			currentWorkbook.close();
 			return this;
 		}
+		else if(inputType==InputOutputType.database&&outputType==InputOutputType.excel)
+		{
+			int rowBufferSize = 100000;
+			
+			currentWorkbook = new XSSFWorkbook(inputFile);
+			
+			//TODO
+			
+			return this;
+		}
 		else throw new ApplicationException("Input or output format is unsupported by the custom input reader");
 	}
+	
 	
 	private void commonRowConversionActions() throws ApplicationException
 	{

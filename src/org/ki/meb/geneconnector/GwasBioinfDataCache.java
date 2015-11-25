@@ -340,7 +340,7 @@ public class GwasBioinfDataCache
 		
 		PreparedStatement ps = con.prepareStatement("CREATE TABLE \""+name+"\" AS "+query+" WITH NO DATA");
 		ps.execute();
-		ps = con.prepareStatement("INSERT INTO \"candidate\" "+query);
+		ps = con.prepareStatement("INSERT INTO \""+name+"\" "+query);
 		ps.execute();
 		
 		return this;
@@ -371,6 +371,11 @@ public class GwasBioinfDataCache
 		q.append("'=HYPERLINK(\"http://genome.ucsc.edu/cgi-bin/hgTracks?&org=Human&db=hg19&position='||\"hg19chrc\"||'%3A'||"+scriptDoubleToVarchar("six1")+"||'-'||"+scriptDoubleToVarchar("six2")+"||'\",\"ucsc\")' AS \"nucsc\",");
 		q.append("\"mdd2clumpraw\".* FROM app.\"mdd2clumpraw\" WHERE \"p\">0 AND \"p\"<1e-5 ORDER BY \"p\") AS \"sub\"");
 		dataset("candidate", q.toString());
+		con.commit();
+		
+		q = new StringBuilder();
+		q.append("SELECT \"rank\", \"p\", \"hg19chrc\", \"six1\", \"six2\", \"nr0\", \"nr1\", \"nr2\", \"b\".* FROM \"candidate\" AS \"a\" INNER JOIN \"nhgri_gwas\" AS \"b\" ON (\"a\".\"nr0\"=\"b\".\"hg19chrom\" AND \"a\".\"nr1\"<=\"b\".\"bp\" AND \"b\".\"bp\"<=\"nr2\")");
+		dataset("nhgri", q.toString());
 		con.commit();
 		
 		return this;

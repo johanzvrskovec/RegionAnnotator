@@ -162,12 +162,12 @@ public class GwasBioinf
 	//Legacy POI version
 	private void initDataFromFiles() throws ApplicationException, Exception
 	{
-		GwasBioinfCustomInputReader inputReader = new GwasBioinfCustomInputReader();
+		GwasBioinfCustomFormatter inputReader = new GwasBioinfCustomFormatter();
 		//import all files in input
 		File[] inputFiles = settingInputFolder.listFiles(filterExcelXlsx);
 		for(int iFile=0; iFile<inputFiles.length; iFile++)
 		{
-			inputReader.setOutputDataCache(dataCache).setInputFile(inputFiles[iFile]).read();
+			inputReader.setDataCache(dataCache).setInputFile(inputFiles[iFile]).read();
 		}
 	}
 	
