@@ -83,7 +83,7 @@ public class GwasBioinfCustomFormatter
 	
 	public GwasBioinfCustomFormatter setDataCache(GwasBioinfDataCache nDataCache) throws ApplicationException
 	{
-		if(outputType!=InputOutputType.database||inputType!=InputOutputType.database)
+		if(outputType!=InputOutputType.database&&inputType!=InputOutputType.database)
 			throw new ApplicationException("Wrong input/output for the configured input/output type. The input type is "+inputType.toString()+", output type is "+outputType.toString()+", and an attempt was made to set a DataCache.");
 			
 		dataCache = nDataCache;

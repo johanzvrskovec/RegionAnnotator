@@ -63,8 +63,10 @@ public class GwasBioinf
 		clOptions.addOption(TextMap.get,false,"Get the database content as exported output");
 		
 		
+		
 		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Path to the folder of the input files used for initiation").hasArg().create("ipath"));
 		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("File to be used as output").hasArg().withLongOpt("outputfile").create("of"));
+		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Database function jar (special case)").hasArg().create("dbjar"));
 		
 		
 	}
@@ -91,6 +93,8 @@ public class GwasBioinf
 		settingOutputFolder = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.outputfolderpath).get(0)).getValue());
 		settingCharsetEncodingText="UTF-8";
 		dataCache=new GwasBioinfDataCache().setRefreshExistingTables(commandLine.hasOption(TextMap.refresh));
+		if(commandLine.hasOption("dbjar"))
+			dataCache.setDBJarFile(new File(commandLine.getOptionValue("dbjar")));
 		
 	}
 	

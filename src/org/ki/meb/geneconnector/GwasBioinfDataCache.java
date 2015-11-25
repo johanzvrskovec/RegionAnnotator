@@ -1,5 +1,6 @@
 package org.ki.meb.geneconnector;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -20,6 +21,7 @@ public class GwasBioinfDataCache
 	private String cacheDBURL;
 	private Connection con;
 	private boolean settingRefreshExistingTables;
+	private File settingDBJarFile;
 	
 	private PreparedStatement createStatement;
 	private PreparedStatement insertStatement;
@@ -41,9 +43,11 @@ public class GwasBioinfDataCache
 		//cacheDBURL = "jdbc:derby:GwasBioinf;create=true;user=GwasBioinfInternal;password=GwasBioinfInternalPass";
 		cacheDBURL = "jdbc:derby:GwasBioinf";
 		settingRefreshExistingTables=false;
+		settingDBJarFile=new File("GwasBioinf.jar");
 	}
 	
 	public GwasBioinfDataCache setRefreshExistingTables(boolean nSettingRefreshExistingTables){settingRefreshExistingTables=nSettingRefreshExistingTables; return this;}
+	public GwasBioinfDataCache setDBJarFile(File nDBJarFile){settingDBJarFile=nDBJarFile; return this;}
 	public boolean getRefreshExistingTables(){return settingRefreshExistingTables;}
 
 	public GwasBioinfDataCache createCacheConnection() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException
@@ -170,7 +174,7 @@ public class GwasBioinfDataCache
 	public boolean getHasFunction(String name) throws ApplicationException, SQLException
 	{
 		assertDBString(name);
-		ResultSet rs = con.getMetaData().getFunctions(null, null, name);
+		ResultSet rs = con.getMetaData().getFunctions(null, null, name.toUpperCase());
 		boolean result =  rs.next();
 		rs.close();
 		return result;
@@ -180,10 +184,28 @@ public class GwasBioinfDataCache
 	
 	private void rebuildCommonArchitecture() throws ApplicationException, SQLException
 	{
-		if(!getHasFunction("stringSeparateFixedSpacing".toUpperCase()))
+		PreparedStatement s;
+		try
 		{
-			createStatement=con.prepareStatement("CREATE FUNCTION stringSeparateFixedSpacing(target VARCHAR(32672),separator VARCHAR(50),spacing INT) RETURNS VARCHAR(32672) PARAMETER STYLE JAVA NO SQL LANGUAGE JAVA EXTERNAL NAME 'org.ki.meb.geneconnector.Utils.stringSeparateFixedSpacing'");
-			createStatement.execute();
+			s=con.prepareStatement("CALL SQLJ.REPLACE_JAR('"+settingDBJarFile.getAbsolutePath()+"', 'GwasBioinf')");
+			s.execute();
+		}
+		catch (SQLException e)
+		{ 
+			s=con.prepareStatement("CALL SQLJ.INSTALL_JAR('"+settingDBJarFile.getAbsolutePath()+"', 'GwasBioinf',0)");
+			s.execute();
+		}
+		
+		if(!getHasFunction("stringSeparateFixedSpacingRight"))
+		{
+			s=con.prepareStatement("CREATE FUNCTION stringSeparateFixedSpacingRight(target VARCHAR(32672),separator VARCHAR(50),spacing INT) RETURNS VARCHAR(32672) PARAMETER STYLE JAVA NO SQL LANGUAGE JAVA EXTERNAL NAME 'DbUtils.stringSeparateFixedSpacingRight'");
+			s.execute();
+		}
+		
+		if(!getHasFunction("stringSeparateFixedSpacingLeft"))
+		{
+			s=con.prepareStatement("CREATE FUNCTION stringSeparateFixedSpacingLeft(target VARCHAR(32672),separator VARCHAR(50),spacing INT) RETURNS VARCHAR(32672) PARAMETER STYLE JAVA NO SQL LANGUAGE JAVA EXTERNAL NAME 'DbUtils.stringSeparateFixedSpacingLeft'");
+			s.execute();
 		}
 		
 	}
