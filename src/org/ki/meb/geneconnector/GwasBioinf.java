@@ -29,6 +29,7 @@ import org.apache.taverna.scufl2.api.core.Workflow;
 import org.apache.taverna.scufl2.api.io.ReaderException;
 import org.apache.taverna.scufl2.api.io.WorkflowBundleIO;
 import org.h2.upgrade.DbUpgrade;
+import org.ki.meb.common.ApplicationException;
 
 //import getl.proc.Flow;
 

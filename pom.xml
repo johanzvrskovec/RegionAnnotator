@@ -196,5 +196,10 @@
 	        <artifactId>taverna-scufl2-t2flow</artifactId>
 	        <version>0.15.0-incubating</version>
 	    </dependency>
+	    <dependency>
+	    	<groupId>org.ki.meb.common</groupId>
+	    	<artifactId>meb.common</artifactId>
+	    	<version>0.0.1-SNAPSHOT</version>
+	    </dependency>
   </dependencies>
 </project>
