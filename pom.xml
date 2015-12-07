@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.ki.meb.geneconnector</groupId>
   <artifactId>GwasBioinf</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.1.0</version>
   <name>GwasBioinf</name>
   <description>org.ki.meb.geneconnector GwasBioinf</description>
   <build>
@@ -199,7 +199,7 @@
 	    <dependency>
 	    	<groupId>org.ki.meb.common</groupId>
 	    	<artifactId>meb.common</artifactId>
-	    	<version>0.0.1-SNAPSHOT</version>
+	    	<version>1.0.0</version>
 	    </dependency>
   </dependencies>
 </project>

@@ -3,6 +3,7 @@
 	<name>gwas_bioinf</name>
 	<comment></comment>
 	<projects>
+		<project>MEB Common</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
