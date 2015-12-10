@@ -12,6 +12,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.ki.meb.common.ApplicationException;
+import org.ki.meb.common.IndexedMap;
 
 public class GwasBioinfDataCache 
 {
@@ -32,8 +33,8 @@ public class GwasBioinfDataCache
 	//entry variables
 	private String tableName;
 	private JSONObject elementMeta;
-	private JSONObject elementNameMap;
-	private JSONObject elementNameIndexMap;
+	private IndexedMap<String,JSONObject> elementNameMap;
+
 	//private JSONArray elementNameArray;
 	private JSONObject rowDataNameMap;
 	private String variableNameListSQL;
@@ -66,10 +67,15 @@ public class GwasBioinfDataCache
     {
         if (con != null&&!con.isClosed())
         {
-        	con.setAutoCommit(false);
-            DriverManager.getConnection(cacheDBURL + ";shutdown=true");
-            con.commit();
             con.close();
+        	try
+            {
+        		DriverManager.getConnection(cacheDBURL + ";shutdown=true");
+            }
+        	catch (java.sql.SQLNonTransientConnectionException e)
+        	{
+        		//Shutdown was OK - ERROR 08006: Database 'GwasBioinf' shutdown. (according to Derby) 
+        	}
         }
         return this;
     }
@@ -243,23 +249,10 @@ public class GwasBioinfDataCache
 			
 			if(!elementMeta.has("namemap"))
 			{
-				elementNameMap = new JSONObject();
+				elementNameMap = new IndexedMap<String,JSONObject>();
 				elementMeta.putOnce("namemap",elementNameMap);
 			}
 			
-			if(!elementMeta.has("nameindexmap"))
-			{
-				elementNameIndexMap = new JSONObject();
-				elementMeta.putOnce("nameindexmap",elementNameIndexMap);
-			}
-			
-			/*
-			if(!elementMeta.has("elementnamearray"))
-			{
-				elementNameArray=new JSONArray();
-				elementMeta.putOnce("elementnamearray",elementNameArray);
-			}
-			*/
 			
 			//shared variable init
 			tableName=elementMeta.getString("path");

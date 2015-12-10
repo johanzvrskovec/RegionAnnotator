@@ -13,6 +13,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.ki.meb.common.ApplicationException;
+import org.ki.meb.common.IndexedMap;
 
 
 public class GwasBioinfCustomFormatter
@@ -32,9 +33,8 @@ public class GwasBioinfCustomFormatter
 	private Row currentRow;
 	private Cell currentCell;
 	private JSONObject elementMeta;
-	private JSONObject elementNameMap;
-	private JSONObject elementNameIndexMap;
-	private JSONObject elementIndexNameMap;
+	private IndexedMap<String,JSONObject> elementNameMap;
+	
 	//private HashMap<Integer, String> columnIndexVariableNameMap;
 	//private HashMap<Integer, Integer> columnIndexVariableTypeMap;
 	private Iterator<Row> rowIt;
@@ -109,15 +109,12 @@ public class GwasBioinfCustomFormatter
 				
 				JSONObject entry = new JSONObject();
 				elementMeta = new JSONObject();
-				elementNameMap = new JSONObject();
-				elementNameIndexMap = new JSONObject();
-				elementIndexNameMap = new JSONObject();
+				elementNameMap = new IndexedMap();
+				
 				HashSet<String> typeset = new HashSet<String>();
 				JSONArray elementNameArray = new JSONArray();
 				elementMeta.put("path", currentSheet.getSheetName());
-				elementMeta.put("namemap",elementNameMap);
-				elementMeta.put("nameindexmap",elementNameIndexMap);
-				elementMeta.put("elementnamearray",elementNameArray);
+				
 				
 				JSONArray rowBuffer=new JSONArray();
 				//columnIndexVariableNameMap = new HashMap<Integer, String>();
@@ -136,14 +133,12 @@ public class GwasBioinfCustomFormatter
 							throw new ApplicationException("Excel error at row number "+currentRow.getRowNum()+" and column index "+currentCell.getColumnIndex());
 						
 						
-						if(!elementNameMap.has(currentCell.getStringCellValue()))
+						if(!elementNameMap.containsKey(currentCell.getStringCellValue()))
 						{
 							JSONObject element = new JSONObject();
 							//element.put("name", currentCell.getStringCellValue());
 							element.put("index", currentCell.getColumnIndex());
-							elementNameMap.putOnce(currentCell.getStringCellValue(), element);
-							elementNameIndexMap.putOnce(currentCell.getStringCellValue(), ""+currentCell.getColumnIndex());
-							elementIndexNameMap.putOnce(""+currentCell.getColumnIndex(), currentCell.getStringCellValue());
+							elementNameMap.put(currentCell.getStringCellValue(),element,currentCell.getColumnIndex());
 							elementNameArray.put(currentCell.getStringCellValue());
 						}
 					}
@@ -159,8 +154,8 @@ public class GwasBioinfCustomFormatter
 						currentCell = cellIt.next();
 						if(currentCell.getCellType()!=Cell.CELL_TYPE_ERROR && currentCell.getCellType()!=Cell.CELL_TYPE_BLANK)
 						{
-							String name = elementIndexNameMap.getString(""+currentCell.getColumnIndex());
-							JSONObject element = elementNameMap.getJSONObject(name);
+							String name = elementNameMap.getKeyAt(currentCell.getColumnIndex());
+							JSONObject element = elementNameMap.getValue(name);
 							short typeToPut;
 							
 							if(currentCell.getCellType()==Cell.CELL_TYPE_BOOLEAN || (currentCell.getCellType()==Cell.CELL_TYPE_FORMULA && currentCell.getCachedFormulaResultType()==Cell.CELL_TYPE_BOOLEAN))
@@ -183,7 +178,7 @@ public class GwasBioinfCustomFormatter
 						}
 					}
 					
-					if(typeset.size()>=elementNameMap.length())
+					if(typeset.size()>=elementNameMap.size())
 						break;
 				}
 				
@@ -191,12 +186,16 @@ public class GwasBioinfCustomFormatter
 				
 				
 				//add metadata
+				elementMeta.put("namemap",elementNameMap.toJSON());
 				entry.put("elementmeta", elementMeta);
 				
 				//restart
 				rowIt = currentSheet.rowIterator();
 				if(settingFirstRowVariableNames)
 					currentRow = rowIt.next();
+				
+				
+				
 				
 				//convert the rest of the data
 				while(rowIt.hasNext())
@@ -267,8 +266,8 @@ public class GwasBioinfCustomFormatter
 		if(currentCellType==Cell.CELL_TYPE_ERROR)
 			throw new ApplicationException("Excel error at row number "+currentRow.getRowNum()+" and column index "+currentCell.getColumnIndex()+". The cell contains an error or is of an incompatible type.");
 		
-		String name = elementIndexNameMap.getString(""+currentCell.getColumnIndex());
-		JSONObject element =  elementNameMap.getJSONObject(name);
+		String name = elementNameMap .getKeyAt(currentCell.getColumnIndex());
+		JSONObject element =  elementNameMap.getValue(name);
 		
 		JSONObject variableValueToAdd = new JSONObject();
 		
