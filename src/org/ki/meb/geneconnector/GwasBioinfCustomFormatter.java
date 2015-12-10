@@ -96,16 +96,20 @@ public class GwasBioinfCustomFormatter
 	public GwasBioinfCustomFormatter read() throws Exception 
 	{
 		
-		if(inputType==InputOutputType.excel&&outputType==InputOutputType.database)
+		if(inputType==InputOutputType.excel)
 		{
 			int rowBufferSize = 100000;
 			
 			currentWorkbook = new XSSFWorkbook(inputFile);
 			for(int iSheet = 0; iSheet<currentWorkbook.getNumberOfSheets(); iSheet++)
 			{
-				currentSheet = currentWorkbook.getSheetAt(iSheet);
-				if(dataCache.getHasTable(currentSheet.getSheetName())&&!dataCache.getRefreshExistingTables())
-					continue;
+				
+				if(outputType==InputOutputType.database)
+				{
+					currentSheet = currentWorkbook.getSheetAt(iSheet);
+					if(dataCache.getHasTable(currentSheet.getSheetName())&&!dataCache.getRefreshExistingTables())
+						continue;
+				}
 				
 				JSONObject entry = new JSONObject();
 				elementMeta = new JSONObject();
@@ -218,7 +222,8 @@ public class GwasBioinfCustomFormatter
 					else
 					{
 						entry.put("rows", rowBuffer);
-						dataCache.enter(entry);
+						if(outputType==InputOutputType.database)
+							dataCache.enter(entry);
 						rowBuffer=new JSONArray();
 					}
 				}
@@ -226,17 +231,19 @@ public class GwasBioinfCustomFormatter
 				if(rowBuffer.length()>0)
 				{
 					entry.put("rows", rowBuffer);
-					dataCache.enter(entry);	
+					if(outputType==InputOutputType.database)
+						dataCache.enter(entry);
 				}
 			}
 			currentWorkbook.close();
 			return this;
 		}
-		else if(inputType==InputOutputType.database&&outputType==InputOutputType.excel)
+		else if(inputType==InputOutputType.database)
 		{
 			int rowBufferSize = 100000;
 			
-			currentWorkbook = new XSSFWorkbook(inputFile);
+			if(outputType==InputOutputType.excel)
+				currentWorkbook = new XSSFWorkbook(outputFile);
 			
 			//TODO
 			
