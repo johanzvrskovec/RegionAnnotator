@@ -141,7 +141,7 @@ public class GwasBioinfCustomFormatter
 						{
 							JSONObject element = new JSONObject();
 							//element.put("name", currentCell.getStringCellValue());
-							element.put("index", currentCell.getColumnIndex());
+							//element.put("index", currentCell.getColumnIndex());
 							elementNameMap.put(currentCell.getStringCellValue(),element,currentCell.getColumnIndex());
 							elementNameArray.put(currentCell.getStringCellValue());
 						}
@@ -223,7 +223,9 @@ public class GwasBioinfCustomFormatter
 					{
 						entry.put("rows", rowBuffer);
 						if(outputType==InputOutputType.database)
+						{
 							dataCache.enter(entry);
+						}
 						rowBuffer=new JSONArray();
 					}
 				}

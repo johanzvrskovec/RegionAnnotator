@@ -15,6 +15,12 @@ import org.json.JSONObject;
 import org.ki.meb.common.ApplicationException;
 import org.ki.meb.common.IndexedMap;
 
+
+/**
+ * NOT THREAD SAFE! SHOULD BE USED PER THREAD
+ * @author johkal
+ *
+ */
 public class GwasBioinfDataCache 
 {
 	public static short DATATYPE_BOOLEAN = 0;
@@ -227,7 +233,11 @@ public class GwasBioinfDataCache
 	}
 	
 	public GwasBioinfDataCache enter(JSONObject entry) throws SQLException, ApplicationException
-	{	
+	{
+		boolean tmpAutocommit = con.getAutoCommit();
+		
+		con.setAutoCommit(false);
+		
 		JSONObject row;
 		JSONArray rows = entry.getJSONArray("rows");
 		if(rows.length()<=0)
@@ -272,6 +282,9 @@ public class GwasBioinfDataCache
 						e.put("type", re.getInt("type"));
 					}
 					
+					elementNameMap.put(names.getString(ie),e);
+					
+					/*
 					if(re.has("index"))
 					{
 						if(re.getInt("index")<=elementNameMap.size())
@@ -284,6 +297,7 @@ public class GwasBioinfDataCache
 					{
 						elementNameMap.put(names.getString(ie),e);
 					}
+					*/
 				}
 			}
 			
@@ -315,13 +329,15 @@ public class GwasBioinfDataCache
 		
 		createStatement.execute();
 		
+		insertStatement = con.prepareStatement(constructInsertStatement());
 		
 		for(int iRow=0; iRow<rows.length(); iRow++)
 		{
+			insertStatement.clearParameters();
 			row=rows.getJSONObject(iRow);
 			rowDataNameMap = row.getJSONObject("data");
 			assertRowMeta();
-			insertStatement = con.prepareStatement(constructInsertStatement());
+			
 			ArrayList<String> names = elementNameMap.keys();
 			ArrayList<JSONObject> elementMeta = elementNameMap.values();
 			for(int iVar=0; iVar<elementMeta.size(); iVar++)
@@ -349,8 +365,12 @@ public class GwasBioinfDataCache
 					else throw new ApplicationException("Datatype coherencey error.");
 				}
 			}
-			insertStatement.execute();
+			insertStatement.addBatch();
 		}
+		
+		int[] batchRes = insertStatement.executeBatch();
+		con.commit();
+		con.setAutoCommit(tmpAutocommit);
 		return this;
 	}
 	
