@@ -19,7 +19,7 @@ import org.ki.meb.common.IndexedMap;
 public class GwasBioinfCustomFormatter
 {
 	
-	public static enum InputOutputType {database,excel};
+	public static enum InputOutputType {DATACACHE,EXCEL};
 	
 	//private OutputStream output;
 	//private InputStream input;
@@ -47,8 +47,8 @@ public class GwasBioinfCustomFormatter
 	
 	public GwasBioinfCustomFormatter() 
 	{
-		inputType=InputOutputType.excel;
-		outputType=InputOutputType.database;
+		inputType=InputOutputType.EXCEL;
+		outputType=InputOutputType.DATACACHE;
 		settingFirstRowVariableNames=true;
 	}
 	
@@ -66,7 +66,7 @@ public class GwasBioinfCustomFormatter
 	
 	public GwasBioinfCustomFormatter setInputFile(File nFile) throws ApplicationException
 	{
-		if(inputType!=InputOutputType.excel)
+		if(inputType!=InputOutputType.EXCEL)
 			throw new ApplicationException("Wrong input for the configured input type. The input type is "+inputType.toString()+" and an attempt was made to set an InputFile.");
 			
 		inputFile = nFile;
@@ -75,7 +75,7 @@ public class GwasBioinfCustomFormatter
 	
 	public GwasBioinfCustomFormatter setOutputFile(File nFile) throws ApplicationException
 	{
-		if(outputType!=InputOutputType.excel)
+		if(outputType!=InputOutputType.EXCEL)
 			throw new ApplicationException("Wrong output for the configured output type. The output type is "+outputType.toString()+" and an attempt was made to set an OutputFile.");
 			
 		outputFile = nFile;
@@ -84,7 +84,7 @@ public class GwasBioinfCustomFormatter
 	
 	public GwasBioinfCustomFormatter setDataCache(GwasBioinfDataCache nDataCache) throws ApplicationException
 	{
-		if(outputType!=InputOutputType.database&&inputType!=InputOutputType.database)
+		if(outputType!=InputOutputType.DATACACHE&&inputType!=InputOutputType.DATACACHE)
 			throw new ApplicationException("Wrong input/output for the configured input/output type. The input type is "+inputType.toString()+", output type is "+outputType.toString()+", and an attempt was made to set a DataCache.");
 			
 		dataCache = nDataCache;
@@ -96,7 +96,7 @@ public class GwasBioinfCustomFormatter
 	public GwasBioinfCustomFormatter read() throws Exception 
 	{
 		
-		if(inputType==InputOutputType.excel)
+		if(inputType==InputOutputType.EXCEL)
 		{
 			int rowBufferSize = 100000;
 			
@@ -104,7 +104,7 @@ public class GwasBioinfCustomFormatter
 			for(int iSheet = 0; iSheet<currentWorkbook.getNumberOfSheets(); iSheet++)
 			{
 				
-				if(outputType==InputOutputType.database)
+				if(outputType==InputOutputType.DATACACHE)
 				{
 					currentSheet = currentWorkbook.getSheetAt(iSheet);
 					if(dataCache.getHasTable(currentSheet.getSheetName())&&!dataCache.getRefreshExistingTables())
@@ -222,7 +222,7 @@ public class GwasBioinfCustomFormatter
 					else
 					{
 						entry.put("rows", rowBuffer);
-						if(outputType==InputOutputType.database)
+						if(outputType==InputOutputType.DATACACHE)
 						{
 							dataCache.enter(entry);
 						}
@@ -233,18 +233,18 @@ public class GwasBioinfCustomFormatter
 				if(rowBuffer.length()>0)
 				{
 					entry.put("rows", rowBuffer);
-					if(outputType==InputOutputType.database)
+					if(outputType==InputOutputType.DATACACHE)
 						dataCache.enter(entry);
 				}
 			}
 			currentWorkbook.close();
 			return this;
 		}
-		else if(inputType==InputOutputType.database)
+		else if(inputType==InputOutputType.DATACACHE)
 		{
 			int rowBufferSize = 100000;
 			
-			if(outputType==InputOutputType.excel)
+			if(outputType==InputOutputType.EXCEL)
 				currentWorkbook = new XSSFWorkbook(outputFile);
 			
 			//TODO
