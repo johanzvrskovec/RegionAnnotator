@@ -30,43 +30,40 @@ import org.apache.taverna.scufl2.api.io.ReaderException;
 import org.apache.taverna.scufl2.api.io.WorkflowBundleIO;
 import org.h2.upgrade.DbUpgrade;
 import org.ki.meb.common.ApplicationException;
+import org.ki.meb.common.ParallelWorker;
+import org.ki.meb.geneconnector.GwasBioinfCustomFormatter.InputOutputType;
 
 //import getl.proc.Flow;
 
-public class GwasBioinf
+public class GwasBioinf //extends ParallelWorker
 {
 	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
 	private CommandLine commandLine;
 	
 	private static Options clOptions = new Options();
-	private PrintStream directedDataOutputStream;
-	private PrintStream directedMessageOutputStream;
 	
-	private String settingCharsetEncodingText;
 	private File settingInputFolder, settingOutputFolder, settingConfigFile;
 	private GwasBioinfDataCache dataCache;
-	private FilenameFilter filterExcelXlsx;
+	private FilenameFilter filterExcelXlsx, filterExcelCSV;
 	
 	static
 	{
 		//clOptions.addOption(OptionBuilder.create(TextMap.regtest)); //inactivated as default
 		clOptions.addOption(TextMap.help,false,"Print usage help.");
 		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Config file").hasArg().create(TextMap.config));
-		//clOptions.addOption(OptionBuilder.withArgName(TextMap.username).withDescription("Username to use for authentication and authorization.").hasArg().create(TextMap.username));
-		//clOptions.addOption(OptionBuilder.withArgName(TextMap.password).withDescription("Password for authentication.").hasArg().create(TextMap.password));
-		//clOptions.addOption(OptionBuilder.withArgName(TextMap.command).withDescription("A JSON-formatted command to configure or send.").hasArg().withLongOpt(TextMap.command).create("c"));
-		//clOptions.addOption(OptionBuilder.withArgName(TextMap.type).withDescription("The type of structure to create. The alternatives are: "+TextMap.command+"|"+TextMap.activity+"|"+TextMap.object).hasArg().withLongOpt(TextMap.create).create("cr"));
-		//clOptions.addOption(OptionBuilder.withArgName("property=value" ).hasArgs().withValueSeparator().withDescription( "Set a command structure property value." ).create(TextMap.set));
-		//clOptions.addOption(OptionBuilder.withArgName("type=structure" ).hasArgs().withValueSeparator().withDescription( "Add a type structure. The types are: "+TextMap.activity ).create(TextMap.add));
 		clOptions.addOption(TextMap.init,false,"Initiate the database content from input files");
-		clOptions.addOption(TextMap.refresh,false,"Refresh the database content from input files");
-		clOptions.addOption(TextMap.link,false,"Perform gene linkage steps");
+		//clOptions.addOption(TextMap.refresh,false,"Refresh the database content from input files");
+		clOptions.addOption(TextMap.operate,false,"Perform operation specifics");
 		clOptions.addOption(TextMap.get,false,"Get the database content as exported output");
 		
 		
 		
 		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Path to the folder of the input files used for initiation").hasArg().create("ipath"));
-		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("File to be used as output").hasArg().withLongOpt("outputfile").create("of"));
 		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Database function jar (special case)").hasArg().create("dbjar"));
 		
 		
@@ -82,6 +79,15 @@ public class GwasBioinf
 				return name.toLowerCase().matches("^.+\\.xlsx$");
 			}
 		};
+		
+		filterExcelCSV= new FilenameFilter() 
+		{
+			@Override
+			public boolean accept(File dir, String name) 
+			{
+				return name.toLowerCase().matches("^.+\\.csv$");
+			}
+		};
 	}
 
 	private void init() throws ConfigurationException
@@ -92,7 +98,6 @@ public class GwasBioinf
 		//setResourceFolder((String)((ConfigurationNode)rootNode.getChildren(TextMap.resourcefolderpath).get(0)).getValue());
 		settingInputFolder = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.inputfolderpath).get(0)).getValue());
 		settingOutputFolder = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.outputfolderpath).get(0)).getValue());
-		settingCharsetEncodingText="UTF-8";
 		dataCache=new GwasBioinfDataCache().setRefreshExistingTables(commandLine.hasOption(TextMap.refresh));
 		if(commandLine.hasOption("dbjar"))
 			dataCache.setDBJarFile(new File(commandLine.getOptionValue("dbjar")));
@@ -128,6 +133,7 @@ public class GwasBioinf
 	}
 	
 	//Camel version -test
+	/*
 	private void initDataFromFiles_camel() throws Exception
 	{
 		CamelContext routingEngineContext = new DefaultCamelContext();
@@ -163,17 +169,26 @@ public class GwasBioinf
 		}
 		routingEngineContext.stop();
 	}
+	*/
 	
-	//Legacy POI version
+	//POI version
 	private void initDataFromFiles() throws ApplicationException, Exception
 	{
-		GwasBioinfCustomFormatter inputReader = new GwasBioinfCustomFormatter();
+		GwasBioinfCustomFormatter inputReader = new GwasBioinfCustomFormatter().setDataCache(dataCache).setOutputType(InputOutputType.DATACACHE);
 		//import all files in input
-		File[] inputFiles = settingInputFolder.listFiles(filterExcelXlsx);
-		for(int iFile=0; iFile<inputFiles.length; iFile++)
+		File[] inputFilesCsv = settingInputFolder.listFiles(filterExcelCSV);
+		for(int iFile=0; iFile<inputFilesCsv.length; iFile++)
 		{
-			inputReader.setDataCache(dataCache).setInputFile(inputFiles[iFile]).read();
+			inputReader.setInputType(InputOutputType.CSV).setInputFile(inputFilesCsv[iFile]).read();
 		}
+		
+		File[] inputFilesXlsx = settingInputFolder.listFiles(filterExcelXlsx);
+		for(int iFile=0; iFile<inputFilesXlsx.length; iFile++)
+		{
+			inputReader.setInputType(InputOutputType.EXCEL).setInputFile(inputFilesXlsx[iFile]).read();
+		}
+		
+		
 	}
 	
 	private void getData() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException
@@ -181,7 +196,7 @@ public class GwasBioinf
 
 		//TODO
 	}
-	
+	/*
 	private void performTavernaWorkflow() throws ReaderException, IOException
 	{
 		//TODO
@@ -189,7 +204,7 @@ public class GwasBioinf
 		WorkflowBundle ro = io.readBundle(new File("workflow.t2flow"), null);
 		ro.getMainWorkflow();
 	}
-	
+	*/
 	private GwasBioinf runCommands() throws Exception
 	{
 		if(commandLine.hasOption(TextMap.help))
@@ -217,9 +232,9 @@ public class GwasBioinf
 			initDataFromFiles();
 		}
 		
-		if(commandLine.hasOption(TextMap.link))
+		if(commandLine.hasOption(TextMap.operate))
 		{
-			linkGeneActions();
+			operate();
 		}
 		
 		if(commandLine.hasOption(TextMap.get))
@@ -233,7 +248,7 @@ public class GwasBioinf
 	}
 	
 	
-	private void linkGeneActions() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException
+	private void operate() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException
 	{
 		StringBuilder q = new StringBuilder();
 		
@@ -248,6 +263,38 @@ public class GwasBioinf
 		q.append("'=HYPERLINK(\"http://genome.ucsc.edu/cgi-bin/hgTracks?&org=Human&db=hg19&position='||\"hg19chrc\"||'%3A'||"+dataCache.scriptDoubleToVarchar("six1")+"||'-'||"+dataCache.scriptDoubleToVarchar("six2")+"||'\",\"ucsc\")' AS \"nucsc\",");
 		q.append("\"mdd2clumpraw\".* FROM app.\"mdd2clumpraw\" WHERE \"p\">0 AND \"p\"<1e-5 ORDER BY \"p\") AS \"sub\"");
 		dataCache.dataset("candidate", q.toString()).commit();
+		
+		
+		//*====== genes for bioinformatics ======;
+		//*=== Genes: GENCODE v17 genes in bin, expand by 20kb;
+		
+		q = new StringBuilder();
+		q.append("SELECT \"gencode_master\".*, (\"f4\"-20000) AS \"e4\", (\"f5\"+20000) AS \"e5\" FROM app.\"gencode_master\"");
+		dataCache.dataset("t2", q.toString()).commit();
+		
+		q = new StringBuilder();
+		q.append("SELECT * FROM app.\"candidate\" INNER JOIN app.\"t2\" ON (\"nr0\"=\"f1\" AND ((\"nr1\"<=\"e4\" AND \"e4\"<=\"nr2\") OR (\"nr1\"<=\"e5\" AND \"e5\"<=\"nr2\") OR (\"e4\"<=\"nr1\" AND \"nr1\"<=\"e5\") OR (\"e4\"<=\"nr2\" AND \"nr2\"<=\"e5\")))");
+		dataCache.dataset("t3", q.toString()).commit();
+		
+		q = new StringBuilder();
+		q.append("SELECT \"rank\", \"p\", \"hg19chrc\", \"six1\", \"six2\", \"f1\" AS \"g0\", \"f4\" AS \"g1\", \"f5\" AS \"g2\", \"f7\" AS \"gstr\", \"gid\" AS \"ensgene\" FROM app.\"t3\"");
+		dataCache.dataset("allgenes20kb", q.toString()).commit();
+		
+		
+		
+		
+		//*====== PC genes & distance ======;
+		//* expand by 10mb;
+		
+		q = new StringBuilder();
+		q.append("SELECT \"gencode_master\".*, (\"f4\"-10e6) AS \"e4\", (\"f5\"-10e6) AS \"e5\" FROM app.\"gencode_master\" WHERE \"ttype\"='protein_coding'");
+		dataCache.dataset("r1", q.toString()).commit();
+		
+		//* join;
+		q = new StringBuilder();
+		q.append("SELECT \"rank\", \"p\", \"hg19chrc\", \"six1\", \"six2\" FROM app.\"candidate\" LEFT JOIN app.\"r1\" ON (\"nr0\"=\"f1\" AND ((\"nr1\"<=\"e4\" AND \"e4\"<=\"nr2\") OR (\"nr1\"<=\"e5\" AND \"e5\"<=\"nr2\") OR (\"e4\"<=\"nr1\" AND \"nr1\"<=\"e5\") OR (\"e4\"<=\"nr2\" AND \"nr2\"<=\"e5\")))");
+		dataCache.dataset("r2", q.toString()).commit();
+		
 		
 		q = new StringBuilder();
 		q.append("SELECT \"rank\", \"p\", \"hg19chrc\", \"six1\", \"six2\", \"nr0\", \"nr1\", \"nr2\", \"b\".* FROM \"candidate\" AS \"a\" INNER JOIN \"nhgri_gwas\" AS \"b\" ON (\"a\".\"nr0\"=\"b\".\"hg19chrom\" AND \"a\".\"nr1\"<=\"b\".\"bp\" AND \"b\".\"bp\"<=\"nr2\")");

@@ -19,7 +19,7 @@ import org.ki.meb.common.IndexedMap;
 public class GwasBioinfCustomFormatter
 {
 	
-	public static enum InputOutputType {DATACACHE,EXCEL};
+	public static enum InputOutputType {DATACACHE,EXCEL,CSV};
 	
 	//private OutputStream output;
 	//private InputStream input;
@@ -64,29 +64,32 @@ public class GwasBioinfCustomFormatter
 		return this;
 	}
 	
-	public GwasBioinfCustomFormatter setInputFile(File nFile) throws ApplicationException
+	public GwasBioinfCustomFormatter setInputFile(File nFile)
 	{
+		/*
 		if(inputType!=InputOutputType.EXCEL)
 			throw new ApplicationException("Wrong input for the configured input type. The input type is "+inputType.toString()+" and an attempt was made to set an InputFile.");
-			
+			*/
 		inputFile = nFile;
 		return this;
 	}
 	
-	public GwasBioinfCustomFormatter setOutputFile(File nFile) throws ApplicationException
+	public GwasBioinfCustomFormatter setOutputFile(File nFile)
 	{
+		/*
 		if(outputType!=InputOutputType.EXCEL)
 			throw new ApplicationException("Wrong output for the configured output type. The output type is "+outputType.toString()+" and an attempt was made to set an OutputFile.");
-			
+			*/
 		outputFile = nFile;
 		return this;
 	}
 	
-	public GwasBioinfCustomFormatter setDataCache(GwasBioinfDataCache nDataCache) throws ApplicationException
+	public GwasBioinfCustomFormatter setDataCache(GwasBioinfDataCache nDataCache)
 	{
+		/*
 		if(outputType!=InputOutputType.DATACACHE&&inputType!=InputOutputType.DATACACHE)
 			throw new ApplicationException("Wrong input/output for the configured input/output type. The input type is "+inputType.toString()+", output type is "+outputType.toString()+", and an attempt was made to set a DataCache.");
-			
+			*/
 		dataCache = nDataCache;
 		return this;
 	}

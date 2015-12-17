@@ -17,14 +17,13 @@ libname md 'C:\Media\work\eclipse\gwas_bioinf\dat_sas\md'; * ~/pgc/mdd2/data/;
 * NOTE - this is the data input section. Is not general. ;
 * needs to be made general;
 * here, input is a list of regions, r0:r1-r2 (r0=chromosome, r1-r2 is hg19 base range);
-
 proc import datafile="C:\Media\work\eclipse\gwas_bioinf\dat_sas\bioinformatics_pgc_mdd2_23me_gera_conv.xlsx" out=md.mdd2clumpraw dbms=xlsx replace;
 sheet="table";
 guessingrows=32767;
 run;
 
 * Export existing data *;
-/*
+
 proc export data=md.mdd2clumpraw outfile="C:\Media\work\eclipse\gwas_bioinf\input\md.xlsx" dbms=xlsx replace;
 sheet="mdd2clumpraw";
 run;
@@ -58,7 +57,7 @@ run;
 proc export data=gm.psych_linkage outfile="C:\Media\work\eclipse\gwas_bioinf\input\gm.xlsx" dbms=xlsx replace;
 sheet="psych_linkage";
 run;
-*/
+
 
 data candidate;
   length snpid $20 a1a2 $6 ll $40 or p 8 cc $40 ucsc $200 r0 $5;
@@ -75,6 +74,15 @@ proc sort data=candidate; by p;
 data candidate; length rank 8; set candidate; rank=_n_;
 proc sort data=candidate; by chr six1 six2;
 run;
+
+
+
+
+
+
+
+
+
 
 *====== genes for bioinformatics ======;
 *=== Genes: GENCODE v17 genes in bin, expand by 20kb;
@@ -198,6 +206,7 @@ data linkage; set linkage;
 run;
 
 *=== export ===;
+/*
 %macro xo(dset,srt);
 proc sort data=&dset.; by &srt.;
 %exportTXT(&dset.);
@@ -215,3 +224,4 @@ proc sort data=&dset.; by &srt.;
 %xo(g1000sv,rank bp1 bp2);
 %xo(gpcr,rank geneName);
 %xo(linkage,rank bp1 bp2);
+*/
