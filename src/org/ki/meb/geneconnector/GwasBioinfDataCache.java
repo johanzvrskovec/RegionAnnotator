@@ -7,13 +7,18 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
+
+import javax.sql.DataSource;
 
 import org.apache.commons.lang.StringUtils;
+import org.h2.jdbcx.JdbcConnectionPool;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.ki.meb.common.ApplicationException;
 import org.ki.meb.common.IndexedMap;
+import org.omg.CosNaming.IstringHelper;
 
 
 /**
@@ -26,6 +31,8 @@ public class GwasBioinfDataCache
 	public static short DATATYPE_BOOLEAN = 0;
 	public static short DATATYPE_DOUBLE = 1;
 	public static short DATATYPE_STRING = 2;
+	public enum ReservedKeyword {CROSS, CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP, DISTINCT, EXCEPT, EXISTS, FALSE, FETCH, FOR, FROM, FULL, GROUP, HAVING, INNER, INTERSECT, IS, JOIN, LIKE, LIMIT, MINUS, NATURAL, NOT, NULL, OFFSET, ON, ORDER, PRIMARY, ROWNUM, SELECT, SYSDATE, SYSTIME, SYSTIMESTAMP, TODAY, TRUE, UNION, UNIQUE, WHERE };
+	private HashSet<String> reservedKeywordsSet;
 	
 	private String cacheDBURL;
 	private Connection con;
@@ -49,11 +56,28 @@ public class GwasBioinfDataCache
 	
 	public GwasBioinfDataCache() 
 	{
-		//cacheDBURL = "jdbc:derby:GwasBioinf;create=true;user=GwasBioinfInternal;password=GwasBioinfInternalPass";
-		cacheDBURL = "jdbc:derby:GwasBioinf";
+		reservedKeywordsSet=new HashSet<String>();
+		fillReservedKeywordSet();
+		cacheDBURL = "jdbc:h2:./GwasBioinf";
 		settingRefreshExistingTables=false;
 		settingDBJarFile=new File("GwasBioinf.jar");
 	}
+	
+	private void fillReservedKeywordSet()
+	{
+		ReservedKeyword[] values =ReservedKeyword.values();
+		for(int i=0; i<values.length; i++)
+		{
+			reservedKeywordsSet.add(values[i].toString());
+		}
+		
+	}
+	
+	public boolean isReservedKeyword(String toTest)
+	{
+		return reservedKeywordsSet.contains(toTest.toUpperCase());
+	}
+	
 	
 	public GwasBioinfDataCache setRefreshExistingTables(boolean nSettingRefreshExistingTables){settingRefreshExistingTables=nSettingRefreshExistingTables; return this;}
 	public GwasBioinfDataCache setDBJarFile(File nDBJarFile){settingDBJarFile=nDBJarFile; return this;}
@@ -61,9 +85,17 @@ public class GwasBioinfDataCache
 
 	public GwasBioinfDataCache createCacheConnection() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException
     {
-        Class.forName("org.apache.derby.jdbc.EmbeddedDriver").newInstance();
+		DataSource dSource;
+		//Class.forName("org.h2.Driver").newInstance();
         //Get a connection
-        con = DriverManager.getConnection(cacheDBURL+";create=true;");
+        //con = DriverManager.getConnection(cacheDBURL);
+		dSource = JdbcConnectionPool.create(cacheDBURL, "user", "password");
+		con=dSource.getConnection();
+	
+        //Class.forName("org.apache.derby.jdbc.EmbeddedDriver").newInstance();
+        //Get a connection
+        //con = DriverManager.getConnection(cacheDBURL+";create=true;");
+		
         con.setAutoCommit(false);
         rebuildCommonArchitecture();
         con.commit();
@@ -75,14 +107,19 @@ public class GwasBioinfDataCache
         if (con != null&&!con.isClosed())
         {
             con.close();
-        	try
+            /*
+            if(dbFlavor==DBFlavor.DERBY)
             {
-        		DriverManager.getConnection(cacheDBURL + ";shutdown=true");
+	        	try
+	            {
+	        		DriverManager.getConnection(cacheDBURL + ";shutdown=true");
+	            }
+	        	catch (java.sql.SQLNonTransientConnectionException e)
+	        	{
+	        		//Shutdown was OK - ERROR 08006: Database 'GwasBioinf' shutdown. (according to Derby) 
+	        	}
             }
-        	catch (java.sql.SQLNonTransientConnectionException e)
-        	{
-        		//Shutdown was OK - ERROR 08006: Database 'GwasBioinf' shutdown. (according to Derby) 
-        	}
+            */
         }
         return this;
     }
@@ -99,14 +136,22 @@ public class GwasBioinfDataCache
 			throw new ApplicationException("Database string error.");
 	}
 	
+	private void assertDBStringReserved(String dbString) throws ApplicationException
+	{
+		if(isReservedKeyword(dbString))
+			throw new ApplicationException("Database string \""+dbString+"\" matches reserved keyword");
+	}
+	
 	private void assertMeta() throws ApplicationException
 	{
 		assertDBString(tableName);
+		assertDBStringReserved(tableName);
 		ArrayList<String> names = elementNameMap.keys();
 
 		for(int iVal=0; iVal<names.size(); iVal++)
 		{
 			assertDBString(names.get(iVal));
+			assertDBStringReserved(names.get(iVal));
 		}
 	}
 	
@@ -128,11 +173,11 @@ public class GwasBioinfDataCache
 		ArrayList<String> names = elementNameMap.keys();
 		if(0<names.size())
 		{
-			q.append("\""+names.get(0)+"\"");
+			q.append(names.get(0));
 		}
 		for(int iVal=1; iVal<names.size(); iVal++)
 		{
-			q.append(",\""+names.get(iVal)+"\"");
+			q.append(","+names.get(iVal));
 		}
 		variableNameListSQL=q.toString();
 	}
@@ -158,7 +203,7 @@ public class GwasBioinfDataCache
 		{
 			JSONObject e = elements.get(0);
 			vartype=e.getInt("type");
-			q.append("\""+names.get(0)+"\"");
+			q.append(names.get(0));
 			q.append(" "+getVariableTypeDeclaration(vartype));
 		}
 		
@@ -166,7 +211,7 @@ public class GwasBioinfDataCache
 		{
 			JSONObject e = elements.get(iVal);
 			vartype=e.getInt("type");
-			q.append(",\""+names.get(iVal)+"\"");
+			q.append(","+names.get(iVal));
 			q.append(" "+getVariableTypeDeclaration(vartype));
 		}
 		variableDeclarationListSQL = q.toString();
@@ -174,31 +219,46 @@ public class GwasBioinfDataCache
 	
 	private String constructCreateStatement() throws ApplicationException
 	{
-		return "CREATE TABLE \""+tableName+"\"("+variableDeclarationListSQL+")";
+		return "CREATE TABLE "+tableName+"("+variableDeclarationListSQL+")";
+	}
+	
+	private String constructDropStatement() throws ApplicationException
+	{
+		return "DROP TABLE "+tableName.toUpperCase();
 	}
 	
 	private String constructInsertStatement() throws ApplicationException
 	{
 		ArrayList<JSONObject> elements = elementNameMap.values();
-		return "INSERT INTO \""+tableName+"\"("+variableNameListSQL+") VALUES ("+StringUtils.repeat("?,", elements.size()-1)+StringUtils.repeat("?",Math.max(Math.min(1,elements.size()),1))+")";
+		return "INSERT INTO "+tableName+"("+variableNameListSQL+") VALUES ("+StringUtils.repeat("?,", elements.size()-1)+StringUtils.repeat("?",Math.max(Math.min(1,elements.size()),1))+")";
 	}
 	
 	public boolean getHasTable(String name) throws ApplicationException, SQLException
 	{
 		assertDBString(name);
-		ResultSet rs = con.getMetaData().getTables(null, null, name, new String[]{"TABLE"});
+		ResultSet rs = con.getMetaData().getTables(null, null, name.toUpperCase(), new String[]{"TABLE"});
 		boolean result =  rs.next();
 		rs.close();
 		return result;
 	}
 	
+	/**
+	 * Deprecated
+	 * 
+	 * @param name
+	 * @return
+	 * @throws ApplicationException
+	 * @throws SQLException
+	 */
 	public boolean getHasFunction(String name) throws ApplicationException, SQLException
 	{
 		assertDBString(name);
-		ResultSet rs = con.getMetaData().getFunctions(null, null, name.toUpperCase());
-		boolean result =  rs.next();
-		rs.close();
-		return result;
+		//ResultSet rs = con.getMetaData().getFunctions(null, null, name.toUpperCase());
+		//boolean result =  rs.next();
+		//rs.close();
+		
+		//return result;
+		return false;
 	}
 	
 	//private void dropFunction(String functionName)
@@ -206,34 +266,23 @@ public class GwasBioinfDataCache
 	private void rebuildCommonArchitecture() throws ApplicationException, SQLException
 	{
 		PreparedStatement s;
-		try
-		{
-			s=con.prepareStatement("CALL SQLJ.REPLACE_JAR('"+settingDBJarFile.getAbsolutePath()+"', 'GwasBioinf')");
-			s.execute();
-		}
-		catch (SQLException e)
-		{ 
-			s=con.prepareStatement("CALL SQLJ.INSTALL_JAR('"+settingDBJarFile.getAbsolutePath()+"', 'GwasBioinf',0)");
-			s.execute();
-		}
-		
-		if(!getHasFunction("stringSeparateFixedSpacingRight"))
-		{
-			s=con.prepareStatement("CREATE FUNCTION stringSeparateFixedSpacingRight(target VARCHAR(32672),separator VARCHAR(50),spacing INT) RETURNS VARCHAR(32672) PARAMETER STYLE JAVA NO SQL LANGUAGE JAVA EXTERNAL NAME 'DbUtils.stringSeparateFixedSpacingRight'");
-			s.execute();
-		}
-		
-		if(!getHasFunction("stringSeparateFixedSpacingLeft"))
-		{
-			s=con.prepareStatement("CREATE FUNCTION stringSeparateFixedSpacingLeft(target VARCHAR(32672),separator VARCHAR(50),spacing INT) RETURNS VARCHAR(32672) PARAMETER STYLE JAVA NO SQL LANGUAGE JAVA EXTERNAL NAME 'DbUtils.stringSeparateFixedSpacingLeft'");
-			s.execute();
-		}
-		
+		s=con.prepareStatement("CREATE ALIAS IF NOT EXISTS stringSeparateFixedSpacingRight FOR \"org.ki.meb.common.Utils.stringSeparateFixedSpacingRight\"");
+		s.execute();
+		s=con.prepareStatement("CREATE ALIAS IF NOT EXISTS stringSeparateFixedSpacingLeft FOR \"org.ki.meb.common.Utils.stringSeparateFixedSpacingLeft\"");
+		s.execute();
+		s=con.prepareStatement("CREATE ALIAS IF NOT EXISTS NUM_MAX_DOUBLE FOR \"org.ki.meb.common.Utils.numMaxDouble\"");
+		s.execute();
+		s=con.prepareStatement("CREATE ALIAS IF NOT EXISTS NUM_MIN_DOUBLE FOR \"org.ki.meb.common.Utils.numMinDouble\"");
+		s.execute();
+		s=con.prepareStatement("CREATE ALIAS IF NOT EXISTS NUM_MAX_INTEGER FOR \"org.ki.meb.common.Utils.numMaxInteger\"");
+		s.execute();
+		s=con.prepareStatement("CREATE ALIAS IF NOT EXISTS NUM_MIN_INTEGER FOR \"org.ki.meb.common.Utils.numMinInteger\"");
+		s.execute();
 	}
 	
 	public GwasBioinfDataCache dropTable(String tableName) throws SQLException
 	{
-		PreparedStatement ds=con.prepareStatement("DROP TABLE \""+tableName+"\"");
+		PreparedStatement ds=con.prepareStatement("DROP TABLE "+tableName.toUpperCase()+" CASCADE");
 		ds.execute();
 		return this;
 	}
@@ -326,7 +375,7 @@ public class GwasBioinfDataCache
 		{
 			if(settingRefreshExistingTables)
 			{
-				dropStatement=con.prepareStatement("DROP TABLE \""+tableName+"\"");
+				dropStatement=con.prepareStatement(constructDropStatement());
 				dropStatement.execute();
 			}
 			else
@@ -380,29 +429,58 @@ public class GwasBioinfDataCache
 		return this;
 	}
 	
-	public GwasBioinfDataCache dataset(String name, String query) throws ApplicationException, SQLException
+	public GwasBioinfDataCache table(String name, String query) throws ApplicationException, SQLException
 	{
+		assertDBString(name);
+		assertDBStringReserved(name);
+		
 		if(getHasTable(name))
 		{
 			dropTable(name);
 		}
 		
-		PreparedStatement ps = con.prepareStatement("CREATE TABLE \""+name+"\" AS "+query+" WITH NO DATA");
+		PreparedStatement ps = con.prepareStatement("CREATE TABLE "+name.toUpperCase()+" AS "+query);
 		ps.execute();
-		ps = con.prepareStatement("INSERT INTO \""+name+"\" "+query);
+		return this;
+	}
+	
+	public GwasBioinfDataCache view(String name, String query) throws ApplicationException, SQLException
+	{
+		assertDBString(name);
+		assertDBStringReserved(name);
+		PreparedStatement ps = con.prepareStatement("CREATE OR REPLACE VIEW "+name.toUpperCase()+" AS "+query);
 		ps.execute();
-		
+		return this;
+	}
+	
+	public GwasBioinfDataCache index(String tablename, String columnname) throws SQLException, ApplicationException
+	{
+		return index(tablename,columnname, tablename+"_"+columnname);
+	}
+	
+	public GwasBioinfDataCache index(String tablename, String columnname, String indexname) throws SQLException, ApplicationException
+	{
+		assertDBString(indexname);
+		assertDBStringReserved(indexname);
+		PreparedStatement ps = con.prepareStatement("CREATE INDEX IF NOT EXISTS "+indexname.toUpperCase()+" ON "+tablename.toUpperCase()+"("+columnname.toUpperCase()+")");
+		ps.execute();
 		return this;
 	}
 	
 	public String scriptDoubleToVarchar(String columnName)
 	{
-		return "TRIM(CAST(CAST(CAST(\""+columnName+"\" AS DECIMAL(25,0)) AS CHAR(38)) AS VARCHAR(32672)))";
+		//return "TRIM(CAST(CAST(CAST(\""+columnName+"\" AS DECIMAL(25,0)) AS CHAR(38)) AS VARCHAR(32672)))";
+		return " TRIM(CAST(CAST("+columnName.toUpperCase()+" AS DECIMAL(25,0)) AS VARCHAR(32672)))";
 	}
 	
 	public String scriptSeparateFixedSpacingRight(String expression, String separator, int spacing)
 	{
 		return "STRINGSEPARATEFIXEDSPACINGRIGHT("+expression+",'"+separator+"',"+spacing+")";
+	}
+	
+	public String scriptTwoSegmentOverlapCondition(String a0, String a1, String b0, String b1)
+	{
+		return "(("+a0+"<="+b0+" AND "+b0+"<="+a1+") OR ("+a0+"<="+b1+" AND "+b1+"<="+a1+") OR ("+b0+"<="+a0+" AND "+a0+"<="+b1+") OR ("+b0+"<="+a1+" AND "+a1+"<="+b1+"))";
 	}
 	
 }
