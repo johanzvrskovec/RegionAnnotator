@@ -5,12 +5,8 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.sql.SQLException;
 
-import org.apache.activemq.ActiveMQConnectionFactory;
-import org.apache.camel.CamelContext;
-import org.apache.camel.ProducerTemplate;
-import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.impl.DefaultCamelContext;
-import org.apache.camel.impl.DefaultPackageScanClassResolver;
+import javax.sql.DataSource;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -20,18 +16,15 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.commons.configuration.tree.ConfigurationNode;
-
-import javax.jms.ConnectionFactory;
-import org.apache.camel.component.jms.JmsComponent;
-
-import org.apache.taverna.scufl2.api.container.WorkflowBundle;
-import org.apache.taverna.scufl2.api.core.Workflow;
-import org.apache.taverna.scufl2.api.io.ReaderException;
-import org.apache.taverna.scufl2.api.io.WorkflowBundleIO;
-import org.h2.upgrade.DbUpgrade;
+import org.apache.ibatis.jdbc.SQL;
 import org.ki.meb.common.ApplicationException;
 import org.ki.meb.common.ParallelWorker;
 import org.ki.meb.geneconnector.GwasBioinfCustomFormatter.InputOutputType;
+
+import com.healthmarketscience.sqlbuilder.SelectQuery;
+import com.healthmarketscience.sqlbuilder.dbspec.basic.DbSchema;
+import com.healthmarketscience.sqlbuilder.dbspec.basic.DbSpec;
+import com.healthmarketscience.sqlbuilder.dbspec.basic.DbTable;
 
 //import getl.proc.Flow;
 
@@ -294,6 +287,25 @@ public class GwasBioinf //extends ParallelWorker
 		q = new StringBuilder();
 		q.append("SELECT \"rank\", \"p\", \"hg19chrc\", \"six1\", \"six2\" FROM app.\"candidate\" LEFT JOIN app.\"r1\" ON (\"nr0\"=\"f1\" AND ((\"nr1\"<=\"e4\" AND \"e4\"<=\"nr2\") OR (\"nr1\"<=\"e5\" AND \"e5\"<=\"nr2\") OR (\"e4\"<=\"nr1\" AND \"nr1\"<=\"e5\") OR (\"e4\"<=\"nr2\" AND \"nr2\"<=\"e5\")))");
 		dataCache.dataset("r2", q.toString()).commit();
+
+		/*
+		DbSpec bDB = new DbSpec();
+		DbSchema schemaApp = bDB.createSchema("APP");
+		DbTable r2Table = new DbTable(schemaApp, "r2");
+		SelectQuery bq = new SelectQuery();
+		String testq = bq.addFromTable(r2Table).toString();
+		*/
+		
+		/*
+		String testq = new SQL()
+		{
+			{
+				SELECT("*");
+				FROM("APP.r2");
+			}
+		}.toString();
+		dataCache.dataset("r3", testq).commit();
+		*/
 		
 		
 		q = new StringBuilder();

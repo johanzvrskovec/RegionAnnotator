@@ -112,46 +112,6 @@
 			<version>10.12.1.1</version>
 		</dependency>
 		<dependency>
-			<groupId>net.sourceforge.getl</groupId>
-			<artifactId>getl</artifactId>
-			<version>1.1.39</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.camel</groupId>
-			<artifactId>camel-core</artifactId>
-			<version>2.16.0</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.camel</groupId>
-			<artifactId>camel-csv</artifactId>
-			<version>2.16.0</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.activemq</groupId>
-			<artifactId>activemq-core</artifactId>
-			<version>5.7.0</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.camel</groupId>
-			<artifactId>camel-component</artifactId>
-			<version>1.4.0</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.camel</groupId>
-			<artifactId>camel-jms</artifactId>
-			<version>2.16.0</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.activemq</groupId>
-			<artifactId>activemq-camel</artifactId>
-			<version>5.12.1</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.camel</groupId>
-			<artifactId>camel-spring</artifactId>
-			<version>2.16.0</version>
-		</dependency>
-		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-nop</artifactId>
 			<version>1.7.12</version>
@@ -171,35 +131,20 @@
 			<artifactId>poi-ooxml</artifactId>
 			<version>3.13</version>
 		</dependency>
-		<dependency>
-	        <groupId>org.apache.taverna.language</groupId>
-	        <artifactId>taverna-robundle</artifactId>
-	        <version>0.15.0-incubating</version>
-	    </dependency>
-	    <dependency>
-	        <groupId>org.apache.taverna.language</groupId>
-	        <artifactId>taverna-databundle</artifactId>
-	        <version>0.15.0-incubating</version>
-	    </dependency>
-	    <dependency>
-	        <groupId>org.apache.taverna.language</groupId>
-	        <artifactId>taverna-scufl2-api</artifactId>
-	        <version>0.15.0-incubating</version>
-	    </dependency>
-	    <dependency>
-	        <groupId>org.apache.taverna.language</groupId>
-	        <artifactId>taverna-scufl2-wfbundle</artifactId>
-	        <version>0.15.0-incubating</version>
-	    </dependency>
-	    <dependency>
-	        <groupId>org.apache.taverna.language</groupId>
-	        <artifactId>taverna-scufl2-t2flow</artifactId>
-	        <version>0.15.0-incubating</version>
-	    </dependency>
 	    <dependency>
 	    	<groupId>org.ki.meb.common</groupId>
 	    	<artifactId>meb.common</artifactId>
 	    	<version>1.0.0</version>
+	    </dependency>
+	    <dependency>
+	    	<groupId>com.healthmarketscience.sqlbuilder</groupId>
+	    	<artifactId>sqlbuilder</artifactId>
+	    	<version>2.1.1</version>
+	    </dependency>
+	    <dependency>
+	    	<groupId>org.mybatis</groupId>
+	    	<artifactId>mybatis</artifactId>
+	    	<version>3.3.0</version>
 	    </dependency>
   </dependencies>
 </project>
