@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.ki.meb.geneconnector</groupId>
   <artifactId>GwasBioinf</artifactId>
-  <version>0.1.0</version>
+  <version>0.3.0</version>
   <name>GwasBioinf</name>
   <description>org.ki.meb.geneconnector GwasBioinf</description>
   <build>
@@ -87,64 +87,14 @@
   </build>
   <dependencies>
 		<dependency>
-			<groupId>org.glassfish.jersey.core</groupId>
-			<artifactId>jersey-client</artifactId>
-			<version>2.22.1</version>
-		</dependency>
-		<dependency>
-			<groupId>org.json</groupId>
-			<artifactId>json</artifactId>
-			<version>20150729</version>
-		</dependency>
-		<dependency>
-			<groupId>commons-configuration</groupId>
-			<artifactId>commons-configuration</artifactId>
-			<version>1.6</version>
-		</dependency>
-		<dependency>
 			<groupId>commons-cli</groupId>
 			<artifactId>commons-cli</artifactId>
 			<version>20040117.000000</version>
 		</dependency>
 		<dependency>
-			<groupId>org.apache.derby</groupId>
-			<artifactId>derby</artifactId>
-			<version>10.12.1.1</version>
+			<groupId>org.ki.meb.common</groupId>
+			<artifactId>meb.common</artifactId>
+			<version>1.1.0</version>
 		</dependency>
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-nop</artifactId>
-			<version>1.7.12</version>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-core</artifactId>
-			<version>4.2.2.RELEASE</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.poi</groupId>
-			<artifactId>poi</artifactId>
-			<version>3.13</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.poi</groupId>
-			<artifactId>poi-ooxml</artifactId>
-			<version>3.13</version>
-		</dependency>
-	    <dependency>
-	    	<groupId>org.ki.meb.common</groupId>
-	    	<artifactId>meb.common</artifactId>
-	    	<version>1.0.0</version>
-	    </dependency>
-	    <dependency>
-	    	<groupId>org.mybatis</groupId>
-	    	<artifactId>mybatis</artifactId>
-	    	<version>3.3.0</version>
-	    </dependency>
-	    <dependency>
-	    	<groupId>com.h2database</groupId>
-	    	<artifactId>h2</artifactId>
-	    	<version>1.4.190</version>
-	    </dependency>
   </dependencies>
 </project>

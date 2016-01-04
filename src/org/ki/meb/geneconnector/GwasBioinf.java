@@ -4,6 +4,7 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.sql.SQLException;
+import java.util.ArrayList;
 
 import javax.sql.DataSource;
 
@@ -18,9 +19,12 @@ import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.commons.configuration.tree.ConfigurationNode;
 import org.apache.derby.impl.sql.execute.OnceResultSet;
 import org.apache.ibatis.jdbc.SQL;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.ki.meb.common.ApplicationException;
+import org.ki.meb.common.DataCache;
 import org.ki.meb.common.ParallelWorker;
-import org.ki.meb.geneconnector.GwasBioinfCustomFormatter.InputOutputType;
+import org.ki.meb.common.formatter.CustomFormatter;
+import org.ki.meb.common.formatter.CustomFormatter.IOType;
 
 //import getl.proc.Flow;
 
@@ -37,8 +41,9 @@ public class GwasBioinf //extends ParallelWorker
 	private static Options clOptions = new Options();
 	
 	private File settingInputFolder, settingOutputFolder, settingConfigFile;
-	private GwasBioinfDataCache dataCache;
-	private FilenameFilter filterExcelXlsx, filterExcelCSV;
+	private CustomFormatter.IOType settingOutputFormat;
+	private DataCache dataCache;
+	private FilenameFilter filterExcelXlsx, filterCSV, filterJSON;
 	
 	static
 	{
@@ -48,12 +53,11 @@ public class GwasBioinf //extends ParallelWorker
 		clOptions.addOption(TextMap.init,false,"Initiate the database content from input files");
 		//clOptions.addOption(TextMap.refresh,false,"Refresh the database content from input files");
 		clOptions.addOption(TextMap.operate,false,"Perform operation specifics");
-		clOptions.addOption(TextMap.get,false,"Get the database content as exported output");
+		clOptions.addOption(OptionBuilder.withArgName("dataset name").withDescription("Get specific database content as exported output").hasArg().create(TextMap.get));
+		clOptions.addOption("getall",false,"Get all database content as exported output");
+		clOptions.addOption(OptionBuilder.withArgName("format - datacache(default), csv, excel").withDescription("output format").hasArg().create("of"));
 		
-		
-		
-		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Path to the folder of the input files used for initiation").hasArg().create("ipath"));
-		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Database function jar (special case)").hasArg().create("dbjar"));
+		//clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Path to the folder of the input files used for initiation").hasArg().create("ipath"));
 		
 		
 	}
@@ -69,7 +73,7 @@ public class GwasBioinf //extends ParallelWorker
 			}
 		};
 		
-		filterExcelCSV= new FilenameFilter() 
+		filterCSV= new FilenameFilter() 
 		{
 			@Override
 			public boolean accept(File dir, String name) 
@@ -77,20 +81,43 @@ public class GwasBioinf //extends ParallelWorker
 				return name.toLowerCase().matches("^.+\\.csv$");
 			}
 		};
+		
+		filterJSON= new FilenameFilter() 
+		{
+			@Override
+			public boolean accept(File dir, String name) 
+			{
+				return name.toLowerCase().matches("^.+\\.json$");
+			}
+		};
 	}
 
-	private void init() throws ConfigurationException
+	private void init() throws ConfigurationException, ApplicationException
 	{
 		XMLConfiguration config = new XMLConfiguration(settingConfigFile);
 		ConfigurationNode rootNode = config.getRootNode();
-		//setDBConnectionString((String)((ConfigurationNode)rootNode.getChildren(TextMap.database_connectionstring).get(0)).getValue());
-		//setResourceFolder((String)((ConfigurationNode)rootNode.getChildren(TextMap.resourcefolderpath).get(0)).getValue());
 		settingInputFolder = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.inputfolderpath).get(0)).getValue());
 		settingOutputFolder = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.outputfolderpath).get(0)).getValue());
-		dataCache=new GwasBioinfDataCache().setRefreshExistingTables(commandLine.hasOption(TextMap.refresh));
-		if(commandLine.hasOption("dbjar"))
-			dataCache.setDBJarFile(new File(commandLine.getOptionValue("dbjar")));
-		
+		dataCache=new DataCache("./GwasBioinf").setRefreshExistingTables(commandLine.hasOption(TextMap.refresh));
+		settingOutputFormat=IOType.DATACACHE;
+		if(commandLine.hasOption("of"))
+		{
+			String ov = commandLine.getOptionValue("of").toLowerCase();
+			if(ov.equals(IOType.DATACACHE.toString().toLowerCase()))
+			{
+				
+				settingOutputFormat=IOType.DATACACHE;
+			}
+			else if(ov.equals(IOType.CSV.toString().toLowerCase()))
+			{
+				settingOutputFormat=IOType.CSV;
+			}
+			else if(ov.equals(IOType.EXCEL.toString().toLowerCase()))
+			{
+				settingOutputFormat=IOType.EXCEL;
+			}
+			else throw new ApplicationException("Output format error. Provded:"+ov);
+		}
 	}
 	
 	public static CommandLine constructCommandLine(String[] args) throws ParseException
@@ -103,7 +130,6 @@ public class GwasBioinf //extends ParallelWorker
 	
 	public static void main(String[] args) throws Exception
 	{
-		//System.out.println("TEST>"+Utils.stringSeparateFixedSpacingRight("abcdefg", ",", 3));
 		new GwasBioinf().setCommandLine(constructCommandLine(args)).runCommands();
 	}
 	
@@ -121,69 +147,63 @@ public class GwasBioinf //extends ParallelWorker
 		return this;
 	}
 	
-	//Camel version -test
-	/*
-	private void initDataFromFiles_camel() throws Exception
-	{
-		CamelContext routingEngineContext = new DefaultCamelContext();
-		ConnectionFactory conFactory = new ActiveMQConnectionFactory("vm://localhost?broker.persistent=false");
-		routingEngineContext.addComponent("jmscomponent", JmsComponent.jmsComponentAutoAcknowledge(conFactory));
-		
-		RouteBuilder routeBuilder = new RouteBuilder() 
-		{
-			
-			@Override
-			public void configure() throws Exception 
-			{
-				from("jmscomponent:queue:test.queue").to("file://test");
-			}
-		};
-		
-		routingEngineContext.addRoutes(routeBuilder);
-		
-		
-		ProducerTemplate template = routingEngineContext.createProducerTemplate();
-		
-		routingEngineContext.start();
-		
-		for (int i = 0; i < 10; i++) 
-		{
-            template.sendBody("jmscomponent:queue:test.queue", "Hello Camel! Test Message: " + i);
-        }
-		
-		Thread.sleep(1000);
-		if(!routingEngineContext.getStatus().isStoppable())
-		{
-			throw new Exception("Can't stop the routing context!");
-		}
-		routingEngineContext.stop();
-	}
-	*/
-	
 	//POI version
 	private void initDataFromFiles() throws ApplicationException, Exception
 	{
-		GwasBioinfCustomFormatter inputReader = new GwasBioinfCustomFormatter().setDataCache(dataCache).setOutputType(InputOutputType.DATACACHE);
+		CustomFormatter inputReader = new CustomFormatter().setDataCache(dataCache).setOutputType(IOType.DATACACHE);
 		//import all files in input
-		File[] inputFilesCsv = settingInputFolder.listFiles(filterExcelCSV);
+		File[] inputFilesJSON = settingInputFolder.listFiles(filterJSON);
+		for(int iFile=0; iFile<inputFilesJSON.length; iFile++)
+		{
+			inputReader.setInputType(IOType.DATACACHE).setInputFile(inputFilesJSON[iFile]).read();
+		}
+		
+		File[] inputFilesCsv = settingInputFolder.listFiles(filterCSV);
 		for(int iFile=0; iFile<inputFilesCsv.length; iFile++)
 		{
-			inputReader.setInputType(InputOutputType.CSV).setInputFile(inputFilesCsv[iFile]).read();
+			inputReader.setInputType(IOType.CSV).setInputFile(inputFilesCsv[iFile]).read();
 		}
 		
 		File[] inputFilesXlsx = settingInputFolder.listFiles(filterExcelXlsx);
 		for(int iFile=0; iFile<inputFilesXlsx.length; iFile++)
 		{
-			inputReader.setInputType(InputOutputType.EXCEL).setInputFile(inputFilesXlsx[iFile]).read();
+			inputReader.setInputType(IOType.EXCEL).setInputFile(inputFilesXlsx[iFile]).read();
 		}
 		
 		
 	}
 	
-	private void getData() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException
+	private void getData(String datasetName) throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException, InvalidFormatException, IOException
 	{
 
-		//TODO
+		CustomFormatter outputWriter = new CustomFormatter().setDataCache(dataCache).setInputType(IOType.DATACACHE);
+		
+		//ArrayList<String> datasets =dataCache.listDatasets();
+		String outputPath= settingOutputFolder.getAbsolutePath();
+		outputWriter.setDataset(datasetName);
+		outputWriter.setOutputType(settingOutputFormat);
+		if(settingOutputFormat==IOType.DATACACHE)
+		{
+			outputWriter.setOutputFile(new File(outputPath+File.separator+datasetName+".json"));
+		}
+		else if(settingOutputFormat==IOType.CSV)
+		{
+			outputWriter.setOutputFile(new File(outputPath+File.separator+datasetName+".csv"));
+		}
+		else if(settingOutputFormat==IOType.EXCEL)
+		{
+			outputWriter.setOutputFile(new File(outputPath+File.separator+datasetName+".xlsx"));
+		}
+		outputWriter.write();
+	}
+	
+	private void getAllData() throws SQLException, InstantiationException, IllegalAccessException, ClassNotFoundException, InvalidFormatException, ApplicationException, IOException
+	{
+		ArrayList<String> datasets =dataCache.listDatasets();
+		for(int i=0; i<datasets.size(); i++)
+		{
+			getData(datasets.get(i));
+		}
 	}
 	/*
 	private void performTavernaWorkflow() throws ReaderException, IOException
@@ -225,9 +245,13 @@ public class GwasBioinf //extends ParallelWorker
 			operate();
 		}
 		
-		if(commandLine.hasOption(TextMap.get))
+		if(commandLine.hasOption("getall"))
 		{
-			getData();
+			getAllData();
+		}
+		else if(commandLine.hasOption(TextMap.get))
+		{
+			getData(commandLine.getOptionValue(TextMap.get));
 		}
 		
 		dataCache.shutdownCacheConnection();
@@ -408,7 +432,7 @@ public class GwasBioinf //extends ParallelWorker
 				ORDER_BY("RANK, dist");
 			}
 		}.toString();
-		dataCache.table("r3", q).commit();
+		dataCache.view("r3", q).commit();
 		
 		
 		//TODO
