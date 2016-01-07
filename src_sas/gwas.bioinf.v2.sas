@@ -10,54 +10,54 @@ libname gm 'C:\Media\work\eclipse\gwas_bioinf\dat_sas\gm'; * ~/GenomeMaster/_dat
 libname md 'C:\Media\work\eclipse\gwas_bioinf\dat_sas\md'; * ~/pgc/mdd2/data/;
 
 
-
-
 *====== set up table ======;
 
 * NOTE - this is the data input section. Is not general. ;
 * needs to be made general;
 * here, input is a list of regions, r0:r1-r2 (r0=chromosome, r1-r2 is hg19 base range);
-proc import datafile="C:\Media\work\eclipse\gwas_bioinf\dat_sas\bioinformatics_pgc_mdd2_23me_gera_conv.xlsx" out=md.mdd2clumpraw dbms=xlsx replace;
+proc import out= md.mdd2clumpraw datafile= "C:\Media\work\eclipse\gwas_bioinf\inputOrig\mdd2clumpraw_orig.xlsx" 
+	dbms=xlsx REPLACE;
 sheet="table";
+getnames=yes;
 guessingrows=32767;
 run;
 
 * Export existing data *;
-
-proc export data=md.mdd2clumpraw outfile="C:\Media\work\eclipse\gwas_bioinf\input\md.xlsx" dbms=xlsx replace;
+/*
+proc export data=md.mdd2clumpraw outfile="C:\Media\work\eclipse\gwas_bioinf\inputOrig\md.xlsx" dbms=xlsx replace;
 sheet="mdd2clumpraw";
 run;
-proc export data=gm.aut_loci_hg19 outfile="C:\Media\work\eclipse\gwas_bioinf\input\gm.xlsx" dbms=xlsx replace;
+proc export data=gm.aut_loci_hg19 outfile="C:\Media\work\eclipse\gwas_bioinf\inputOrig\gm.xlsx" dbms=xlsx replace;
 sheet="aut_loci_hg19";
 run;
-proc export data=gm.g1000sv outfile="C:\Media\work\eclipse\gwas_bioinf\input\gm.xlsx" dbms=xlsx replace;
+proc export data=gm.g1000sv outfile="C:\Media\work\eclipse\gwas_bioinf\inputOrig\gm.xlsx" dbms=xlsx replace;
 sheet="g1000sv";
 run;
-proc export data=gm.gencode_master outfile="C:\Media\work\eclipse\gwas_bioinf\input\gm.xlsx" dbms=xlsx replace;
+proc export data=gm.gencode_master outfile="C:\Media\work\eclipse\gwas_bioinf\inputOrig\gm.xlsx" dbms=xlsx replace;
 sheet="gencode_master";
 run;
-proc export data=gm.gproteincoupledreceptors outfile="C:\Media\work\eclipse\gwas_bioinf\input\gm.xlsx" dbms=xlsx replace;
+proc export data=gm.gproteincoupledreceptors outfile="C:\Media\work\eclipse\gwas_bioinf\inputOrig\gm.xlsx" dbms=xlsx replace;
 sheet="gproteincoupledreceptors";
 run;
-proc export data=gm.id_devdelay outfile="C:\Media\work\eclipse\gwas_bioinf\input\gm.xlsx" dbms=xlsx replace;
+proc export data=gm.id_devdelay outfile="C:\Media\work\eclipse\gwas_bioinf\inputOrig\gm.xlsx" dbms=xlsx replace;
 sheet="id_devdelay";
 run;
-proc export data=gm.mouse outfile="C:\Media\work\eclipse\gwas_bioinf\input\gm.xlsx" dbms=xlsx replace;
+proc export data=gm.mouse outfile="C:\Media\work\eclipse\gwas_bioinf\inputOrig\gm.xlsx" dbms=xlsx replace;
 sheet="mouse";
 run;
-proc export data=gm.nhgri_gwas outfile="C:\Media\work\eclipse\gwas_bioinf\input\gm.xlsx" dbms=xlsx replace;
+proc export data=gm.nhgri_gwas outfile="C:\Media\work\eclipse\gwas_bioinf\inputOrig\gm.xlsx" dbms=xlsx replace;
 sheet="nhgri_gwas";
 run;
-proc export data=gm.omim outfile="C:\Media\work\eclipse\gwas_bioinf\input\gm.xlsx" dbms=xlsx replace;
+proc export data=gm.omim outfile="C:\Media\work\eclipse\gwas_bioinf\inputOrig\gm.xlsx" dbms=xlsx replace;
 sheet="omim";
 run;
-proc export data=gm.psych_cnv_hg19 outfile="C:\Media\work\eclipse\gwas_bioinf\input\gm.xlsx" dbms=xlsx replace;
+proc export data=gm.psych_cnv_hg19 outfile="C:\Media\work\eclipse\gwas_bioinf\inputOrig\gm.xlsx" dbms=xlsx replace;
 sheet="psych_cnv_hg19";
 run;
-proc export data=gm.psych_linkage outfile="C:\Media\work\eclipse\gwas_bioinf\input\gm.xlsx" dbms=xlsx replace;
+proc export data=gm.psych_linkage outfile="C:\Media\work\eclipse\gwas_bioinf\inputOrig\gm.xlsx" dbms=xlsx replace;
 sheet="psych_linkage";
 run;
-
+*/
 
 data candidate;
   length snpid $20 a1a2 $6 ll $40 or p 8 cc $40 ucsc $200 r0 $5;

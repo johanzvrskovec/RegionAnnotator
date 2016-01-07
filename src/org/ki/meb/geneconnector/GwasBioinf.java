@@ -2,11 +2,8 @@ package org.ki.meb.geneconnector;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.sql.SQLException;
 import java.util.ArrayList;
-
-import javax.sql.DataSource;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -17,12 +14,10 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.commons.configuration.tree.ConfigurationNode;
-import org.apache.derby.impl.sql.execute.OnceResultSet;
 import org.apache.ibatis.jdbc.SQL;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.ki.meb.common.ApplicationException;
 import org.ki.meb.common.DataCache;
-import org.ki.meb.common.ParallelWorker;
 import org.ki.meb.common.formatter.CustomFormatter;
 import org.ki.meb.common.formatter.CustomFormatter.IOType;
 
@@ -31,11 +26,6 @@ import org.ki.meb.common.formatter.CustomFormatter.IOType;
 public class GwasBioinf //extends ParallelWorker
 {
 	
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
-
 	private CommandLine commandLine;
 	
 	private static Options clOptions = new Options();
@@ -105,7 +95,6 @@ public class GwasBioinf //extends ParallelWorker
 			String ov = commandLine.getOptionValue("of").toLowerCase();
 			if(ov.equals(IOType.DATACACHE.toString().toLowerCase()))
 			{
-				
 				settingOutputFormat=IOType.DATACACHE;
 			}
 			else if(ov.equals(IOType.CSV.toString().toLowerCase()))
@@ -116,14 +105,23 @@ public class GwasBioinf //extends ParallelWorker
 			{
 				settingOutputFormat=IOType.EXCEL;
 			}
-			else throw new ApplicationException("Output format error. Provded:"+ov);
+			else throw new ApplicationException("Output format error. Provided:"+ov);
 		}
 	}
 	
 	public static CommandLine constructCommandLine(String[] args) throws ParseException
 	{
+		CommandLine commandLine;
 		CommandLineParser parser = new org.apache.commons.cli.GnuParser();
-		CommandLine commandLine = parser.parse(clOptions, args);
+		try
+		{
+			
+			commandLine = parser.parse(clOptions, args);
+		}
+		catch (Exception e)
+		{
+			commandLine = parser.parse(clOptions, new String[]{"-"+TextMap.help});
+		}
 		return commandLine;
 	}
 	
@@ -136,9 +134,9 @@ public class GwasBioinf //extends ParallelWorker
 	//always to standard output
 	private void printHelp()
 	{
-		System.out.println("Report Generator Command Line Application");
+		System.out.println("Gene Connector Command Line Application");
 		HelpFormatter formatter = new HelpFormatter();
-		formatter.printHelp("ReportGenerator", "", clOptions, "", true);
+		formatter.printHelp("java -jar \"GwasBioinf.jar\"", "", clOptions, "", true);
 	}
 	
 	public GwasBioinf setCommandLine(CommandLine nCommandLine)
@@ -215,7 +213,7 @@ public class GwasBioinf //extends ParallelWorker
 	*/
 	private GwasBioinf runCommands() throws Exception
 	{
-		if(commandLine.hasOption(TextMap.help))
+		if(commandLine.hasOption(TextMap.help)||(!commandLine.hasOption(TextMap.config)&&!commandLine.hasOption(TextMap.init)&&!commandLine.hasOption(TextMap.operate)&&!commandLine.hasOption(TextMap.get)&&!commandLine.hasOption("getall")))
 		{
 			printHelp();
 			return this;
@@ -267,9 +265,8 @@ public class GwasBioinf //extends ParallelWorker
 		
 		
 		//String schemaName = "APP"; 
-		String schemaName = "PUBLIC";
+		final String schemaName = "PUBLIC";
 		
-		StringBuilder qSB = new StringBuilder();
 		String q;
 		
 		
@@ -287,7 +284,7 @@ public class GwasBioinf //extends ParallelWorker
 		dataCache.index(schemaName+".MDD2CLUMPRAW", "r2");
 		
 		//operations
-		SQL candidateInner = new SQL()
+		final SQL candidateInner = new SQL()
 		{
 			{
 				SELECT("RANK AS RANK_MDD2");
