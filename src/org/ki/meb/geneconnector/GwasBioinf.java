@@ -18,6 +18,7 @@ import org.apache.ibatis.jdbc.SQL;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.ki.meb.common.ApplicationException;
 import org.ki.meb.common.DataCache;
+import org.ki.meb.common.DataCache.DataEntry;
 import org.ki.meb.common.formatter.CustomFormatter;
 import org.ki.meb.common.formatter.CustomFormatter.IOType;
 
@@ -30,22 +31,31 @@ public class GwasBioinf //extends ParallelWorker
 	
 	private static Options clOptions = new Options();
 	
-	private File settingInputFolder, settingOutputFolder, settingConfigFile;
-	private CustomFormatter.IOType settingOutputFormat;
+	private File settingConfigFile, settingInputFile, settingOutputFile;
+	private CustomFormatter.IOType settingInputFormat, settingOutputFormat;
+	private boolean settingReference, settingGene, settingOverwriteExistingTables;
 	private DataCache dataCache;
-	private FilenameFilter filterExcelXlsx, filterCSV, filterJSON;
+	private FilenameFilter filterExcelXlsx, filterCSV, filterTSV, filterJSON;
 	
 	static
 	{
 		//clOptions.addOption(OptionBuilder.create(TextMap.regtest)); //inactivated as default
 		clOptions.addOption(TextMap.help,false,"Print usage help.");
+		
+		clOptions.addOption(OptionBuilder.withArgName("file/folder path").withDescription("Input from the specified file or folder.").hasArg().create(TextMap.input));
+		clOptions.addOption("reference",false,"Enter as reference data");
+		clOptions.addOption("gene",false,"Enter as gene data");
+		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Output to the specified file - Excel").hasArg().create(TextMap.output+"_text"));
+		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Output to the specified file - Excel").hasArg().create(TextMap.output+"_excel"));
+		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Output to the specified file - Excel").hasArg().create(TextMap.output+"_datacache"));
+		clOptions.addOption(OptionBuilder.withArgName("dataset name").withDescription("Get specific database content (table/view) as exported output.").hasArg().create(TextMap.get));
+		clOptions.addOption(TextMap.output+"all",false,"Output all database content.");
+		
+		clOptions.addOption(OptionBuilder.withArgName("format - csv(default), tsv, datacache, excel").withDescription("Force output format.").hasArg().create("of"));
+		clOptions.addOption(OptionBuilder.withArgName("format - csv(default), tsv, datacache, excel").withDescription("Force input format.").hasArg().create("if"));
+		clOptions.addOption(OptionBuilder.withArgName("true/false").withDescription("Overwrite existing tables with the same names. Default - true for work and reference, false for gene").hasArg().create("overwrite"));
+		clOptions.addOption(OptionBuilder.withArgName("true/false").withDescription("Perform operation specifics or not. Default - true.").hasArg().create(TextMap.operate));
 		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Config file").hasArg().create(TextMap.config));
-		clOptions.addOption(TextMap.init,false,"Initiate the database content from input files");
-		//clOptions.addOption(TextMap.refresh,false,"Refresh the database content from input files");
-		clOptions.addOption(TextMap.operate,false,"Perform operation specifics");
-		clOptions.addOption(OptionBuilder.withArgName("dataset name").withDescription("Get specific database content as exported output").hasArg().create(TextMap.get));
-		clOptions.addOption("getall",false,"Get all database content as exported output");
-		clOptions.addOption(OptionBuilder.withArgName("format - datacache(default), csv, excel").withDescription("output format").hasArg().create("of"));
 		
 		//clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Path to the folder of the input files used for initiation").hasArg().create("ipath"));
 		
@@ -72,6 +82,15 @@ public class GwasBioinf //extends ParallelWorker
 			}
 		};
 		
+		filterTSV= new FilenameFilter() 
+		{
+			@Override
+			public boolean accept(File dir, String name) 
+			{
+				return name.toLowerCase().matches("^.+\\.tsv$");
+			}
+		};
+		
 		filterJSON= new FilenameFilter() 
 		{
 			@Override
@@ -86,27 +105,66 @@ public class GwasBioinf //extends ParallelWorker
 	{
 		XMLConfiguration config = new XMLConfiguration(settingConfigFile);
 		ConfigurationNode rootNode = config.getRootNode();
-		settingInputFolder = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.inputfolderpath).get(0)).getValue());
-		settingOutputFolder = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.outputfolderpath).get(0)).getValue());
-		dataCache=new DataCache("./GwasBioinf").setRefreshExistingTables(commandLine.hasOption(TextMap.refresh));
-		settingOutputFormat=IOType.DATACACHE;
+		settingInputFile = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.inputfolderpath).get(0)).getValue());
+		settingOutputFile = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.outputfolderpath).get(0)).getValue());
+		dataCache=new DataCache("./GwasBioinf");
+		settingInputFormat=null;
+		settingOutputFormat=IOType.CSV;
+		settingReference=false;
+		settingGene=false;
+		
+		if(commandLine.hasOption(TextMap.input))
+		{
+			settingInputFile=new File(commandLine.getOptionValue(TextMap.input));
+		}
+		
+		
+		if(commandLine.hasOption("if"))
+		{
+			String ov = commandLine.getOptionValue("if").toUpperCase();
+			try
+			{
+				settingInputFormat=IOType.valueOf(ov);
+			}
+			catch (Exception e)
+			{
+				throw new ApplicationException("Input format error. Provided:"+ov,e);
+			}
+		}
+		
 		if(commandLine.hasOption("of"))
 		{
-			String ov = commandLine.getOptionValue("of").toLowerCase();
-			if(ov.equals(IOType.DATACACHE.toString().toLowerCase()))
+			String ov = commandLine.getOptionValue("of").toUpperCase();
+			try
 			{
-				settingOutputFormat=IOType.DATACACHE;
+				settingOutputFormat=IOType.valueOf(ov);
 			}
-			else if(ov.equals(IOType.CSV.toString().toLowerCase()))
+			catch (Exception e)
 			{
-				settingOutputFormat=IOType.CSV;
+				throw new ApplicationException("Output format error. Provided:"+ov,e);
 			}
-			else if(ov.equals(IOType.EXCEL.toString().toLowerCase()))
-			{
-				settingOutputFormat=IOType.EXCEL;
-			}
-			else throw new ApplicationException("Output format error. Provided:"+ov);
 		}
+		
+		if(commandLine.hasOption("reference"))
+		{
+			settingReference=true;
+		}
+		
+		if(commandLine.hasOption("gene"))
+		{
+			settingGene=true;
+		}
+		
+		settingOverwriteExistingTables=true;
+		if(commandLine.hasOption("overwrite"))
+		{
+			settingOverwriteExistingTables=Boolean.parseBoolean(commandLine.getOptionValue("overwrite"));
+		}
+		//else if(settingGene)
+			//settingOverwriteExistingTables=false;
+		
+		
+		
 	}
 	
 	public static CommandLine constructCommandLine(String[] args) throws ParseException
@@ -115,7 +173,6 @@ public class GwasBioinf //extends ParallelWorker
 		CommandLineParser parser = new org.apache.commons.cli.GnuParser();
 		try
 		{
-			
 			commandLine = parser.parse(clOptions, args);
 		}
 		catch (Exception e)
@@ -131,89 +188,12 @@ public class GwasBioinf //extends ParallelWorker
 		new GwasBioinf().setCommandLine(constructCommandLine(args)).runCommands();
 	}
 	
-	//always to standard output
-	private void printHelp()
-	{
-		System.out.println("Gene Connector Command Line Application");
-		HelpFormatter formatter = new HelpFormatter();
-		formatter.printHelp("java -jar \"GwasBioinf.jar\"", "", clOptions, "", true);
-	}
 	
-	public GwasBioinf setCommandLine(CommandLine nCommandLine)
-	{
-		commandLine=nCommandLine;
-		return this;
-	}
-	
-	//POI version
-	private void initDataFromFiles() throws ApplicationException, Exception
-	{
-		CustomFormatter inputReader = new CustomFormatter().setDataCache(dataCache).setOutputType(IOType.DATACACHE);
-		//import all files in input
-		File[] inputFilesJSON = settingInputFolder.listFiles(filterJSON);
-		for(int iFile=0; iFile<inputFilesJSON.length; iFile++)
-		{
-			inputReader.setInputType(IOType.DATACACHE).setInputFile(inputFilesJSON[iFile]).read();
-		}
-		
-		File[] inputFilesCsv = settingInputFolder.listFiles(filterCSV);
-		for(int iFile=0; iFile<inputFilesCsv.length; iFile++)
-		{
-			inputReader.setInputType(IOType.CSV).setInputFile(inputFilesCsv[iFile]).read();
-		}
-		
-		File[] inputFilesXlsx = settingInputFolder.listFiles(filterExcelXlsx);
-		for(int iFile=0; iFile<inputFilesXlsx.length; iFile++)
-		{
-			inputReader.setInputType(IOType.EXCEL).setInputFile(inputFilesXlsx[iFile]).read();
-		}
-		
-		
-	}
-	
-	private void getData(String datasetName) throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException, InvalidFormatException, IOException
-	{
-
-		CustomFormatter outputWriter = new CustomFormatter().setDataCache(dataCache).setInputType(IOType.DATACACHE);
-		
-		//ArrayList<String> datasets =dataCache.listDatasets();
-		String outputPath= settingOutputFolder.getAbsolutePath();
-		outputWriter.setDataset(datasetName);
-		outputWriter.setOutputType(settingOutputFormat);
-		if(settingOutputFormat==IOType.DATACACHE)
-		{
-			outputWriter.setOutputFile(new File(outputPath+File.separator+datasetName+".json"));
-		}
-		else if(settingOutputFormat==IOType.CSV)
-		{
-			outputWriter.setOutputFile(new File(outputPath+File.separator+datasetName+".csv"));
-		}
-		else if(settingOutputFormat==IOType.EXCEL)
-		{
-			outputWriter.setOutputFile(new File(outputPath+File.separator+datasetName+".xlsx"));
-		}
-		outputWriter.write();
-	}
-	
-	private void getAllData() throws SQLException, InstantiationException, IllegalAccessException, ClassNotFoundException, InvalidFormatException, ApplicationException, IOException
-	{
-		ArrayList<String> datasets =dataCache.listDatasets();
-		for(int i=0; i<datasets.size(); i++)
-		{
-			getData(datasets.get(i));
-		}
-	}
-	/*
-	private void performTavernaWorkflow() throws ReaderException, IOException
-	{
-		WorkflowBundleIO io = new WorkflowBundleIO();
-		WorkflowBundle ro = io.readBundle(new File("workflow.t2flow"), null);
-		ro.getMainWorkflow();
-	}
-	*/
 	private GwasBioinf runCommands() throws Exception
 	{
-		if(commandLine.hasOption(TextMap.help)||(!commandLine.hasOption(TextMap.config)&&!commandLine.hasOption(TextMap.init)&&!commandLine.hasOption(TextMap.operate)&&!commandLine.hasOption(TextMap.get)&&!commandLine.hasOption("getall")))
+		if(commandLine.hasOption(TextMap.help)
+				//||(!commandLine.hasOption(TextMap.config)&&!commandLine.hasOption("reference")&&!commandLine.hasOption(TextMap.operate)&&!commandLine.hasOption(TextMap.get)&&!commandLine.hasOption("getall"))
+				)
 		{
 			printHelp();
 			return this;
@@ -232,30 +212,232 @@ public class GwasBioinf //extends ParallelWorker
 		
 		dataCache.createCacheConnection();
 		
-		if(commandLine.hasOption(TextMap.init))
-		{
-			//initDataFromFiles_camel();
-			initDataFromFiles();
-		}
 		
-		if(commandLine.hasOption(TextMap.operate))
+		inputDataFromFiles();
+		
+		
+		if((!commandLine.hasOption(TextMap.operate)&&!settingReference&&!settingGene)||Boolean.parseBoolean(commandLine.getOptionValue(TextMap.operate))==true)
 		{
 			operate();
 		}
 		
-		if(commandLine.hasOption("getall"))
-		{
-			getAllData();
-		}
-		else if(commandLine.hasOption(TextMap.get))
-		{
-			getData(commandLine.getOptionValue(TextMap.get));
-		}
+		outputDataToFiles();
 		
 		dataCache.shutdownCacheConnection();
 		
 		return this;
 	}
+	
+	
+	//always to standard output
+	private void printHelp()
+	{
+		System.out.println("Gene Connector Command Line Application");
+		HelpFormatter formatter = new HelpFormatter();
+		formatter.printHelp("java -jar \"GwasBioinf.jar\"", "", clOptions, "", true);
+	}
+	
+	public GwasBioinf setCommandLine(CommandLine nCommandLine)
+	{
+		commandLine=nCommandLine;
+		return this;
+	}
+	
+	
+	
+	
+	private void inputDataFromFiles() throws ApplicationException, Exception
+	{
+		IOType usedInputFormat = settingInputFormat;
+			
+		CustomFormatter inputReader = new CustomFormatter().setDataCache(dataCache).setOverwriteExistingTables(settingOverwriteExistingTables);
+		
+		String pathToUse = "WORK"; //for standard input
+		if(settingGene)
+			pathToUse="GENE_MASTER";
+		else if(settingReference)
+			pathToUse=null;
+		
+		inputReader.setPath(pathToUse);
+		
+		if(settingInputFile.isFile())
+		{
+			if(usedInputFormat==null)
+			{
+				if(settingInputFile.getName().toLowerCase().matches("^.+\\.xlsx$"))
+				{
+					usedInputFormat=IOType.EXCEL;
+				}
+				else if(settingInputFile.getName().toLowerCase().matches("^.+\\.csv$"))
+				{
+					usedInputFormat=IOType.CSV;
+				}
+				else if(settingInputFile.getName().toLowerCase().matches("^.+\\.tsv$"))
+				{
+					usedInputFormat=IOType.TSV;
+				}
+				else if(settingInputFile.getName().toLowerCase().matches("^.+\\.json$"))
+				{
+					usedInputFormat=IOType.DATACACHE;
+				}
+			}
+			
+			if(settingGene)
+			{
+				inputReader.setInputType(usedInputFormat).setInputFile(settingInputFile).read();
+				dataCache.index("GENE_MASTER", "f1");
+				dataCache.index("GENE_MASTER", "f4");
+				dataCache.index("GENE_MASTER", "f5");
+				dataCache.index("GENE_MASTER", "f7");
+				dataCache.index("GENE_MASTER", "genename");
+			}
+			else if(settingReference)
+			{
+				inputReader.setInputType(usedInputFormat).setInputFile(settingInputFile).read();
+			}
+			else
+			{
+				//WORK settings
+				DataEntry entryTemplate = dataCache.newEntry(pathToUse);
+				entryTemplate.memory=true;
+				entryTemplate.temporary=false;
+				entryTemplate.local=false;
+				inputReader.setInputType(usedInputFormat).setInputFile(settingInputFile).read(entryTemplate);
+				dataCache.index("WORK", "RANK");
+				dataCache.index("WORK", "six1");
+				dataCache.index("WORK", "six2");
+				dataCache.index("WORK", "r1");
+				dataCache.index("WORK", "r2");
+			}
+				
+				
+		}
+		else if(settingInputFile.isDirectory())
+		{
+			
+			//import all files in input
+			File[] inputFilesJSON = settingInputFile.listFiles(filterJSON);
+			for(int iFile=0; iFile<inputFilesJSON.length; iFile++)
+			{
+				inputReader.setInputType(IOType.DATACACHE).setInputFile(inputFilesJSON[iFile]).read();
+			}
+			
+			File[] inputFilesCsv = settingInputFile.listFiles(filterCSV);
+			for(int iFile=0; iFile<inputFilesCsv.length; iFile++)
+			{
+				inputReader.setInputType(IOType.CSV).setInputFile(inputFilesCsv[iFile]).read();
+			}
+			
+			File[] inputFilesTsv = settingInputFile.listFiles(filterTSV);
+			for(int iFile=0; iFile<inputFilesTsv.length; iFile++)
+			{
+				inputReader.setInputType(IOType.TSV).setInputFile(inputFilesTsv[iFile]).read();
+			}
+			
+			File[] inputFilesXlsx = settingInputFile.listFiles(filterExcelXlsx);
+			for(int iFile=0; iFile<inputFilesXlsx.length; iFile++)
+			{
+				inputReader.setInputType(IOType.EXCEL).setInputFile(inputFilesXlsx[iFile]).read();
+			}
+			
+		}
+		else throw new ApplicationException("Wrong type of input; it is not a file nor a directory.");
+		
+		dataCache.commit();
+	}
+	
+	
+	private void outputDataToFiles() throws InstantiationException, IllegalAccessException, ClassNotFoundException, InvalidFormatException, SQLException, ApplicationException, IOException
+	{
+		if(commandLine.hasOption(TextMap.output+"all"))
+		{
+			outputAllData();
+		}
+		else if(commandLine.hasOption(TextMap.get))
+		{
+			outputData(commandLine.getOptionValue(TextMap.get),null);
+		}
+		else if(commandLine.hasOption(TextMap.output+"_text"))
+		{
+			settingOutputFormat=IOType.CSV;
+			settingOutputFile = new File(commandLine.getOptionValue(TextMap.output+"_text"));
+			outputData("WORK",null);
+		}
+		else if(commandLine.hasOption(TextMap.output+"_excel"))
+		{
+			settingOutputFormat=IOType.EXCEL;
+			settingOutputFile = new File(commandLine.getOptionValue(TextMap.output+"_excel"));
+			outputData("WORK",null);
+		}
+		else if(commandLine.hasOption(TextMap.output+"_datacache"))
+		{
+			settingOutputFormat=IOType.DATACACHE;
+			settingOutputFile = new File(commandLine.getOptionValue(TextMap.output+"_datacache"));
+			outputData("WORK",null);
+		}
+	}
+	
+	private void outputData(String datasetName, String filename) throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException, InvalidFormatException, IOException
+	{
+
+		CustomFormatter outputWriter = new CustomFormatter().setDataCache(dataCache).setInputType(IOType.DATACACHE);
+		File of;
+		if(filename==null)
+			filename=datasetName;
+		
+		if(filename==null&&settingOutputFile.isFile())
+		{
+			of=settingOutputFile;
+		}
+		else 
+		{
+			String outputFolderPath="";
+			if(settingOutputFile.isDirectory())
+				outputFolderPath= settingOutputFile.getAbsolutePath();
+			
+			if(settingOutputFormat==IOType.CSV)
+			{
+				of=new File(outputFolderPath+File.separator+filename+".csv");
+			}
+			else if(settingOutputFormat==IOType.TSV)
+			{
+				of=new File(outputFolderPath+File.separator+filename+".tsv");
+			}
+			else if(settingOutputFormat==IOType.EXCEL)
+			{
+				of=new File(outputFolderPath+File.separator+filename+".xlsx");
+			}
+			else
+			{
+				of=new File(outputFolderPath+File.separator+filename+".json");
+			}
+		}
+		
+		outputWriter.setPath(datasetName);
+		outputWriter.setOutputType(settingOutputFormat);
+		outputWriter.setOutputFile(of);
+		outputWriter.write();
+	}
+	
+	private void outputAllData() throws SQLException, InstantiationException, IllegalAccessException, ClassNotFoundException, InvalidFormatException, ApplicationException, IOException
+	{
+		ArrayList<String> datasets =dataCache.listDatasets();
+		for(int i=0; i<datasets.size(); i++)
+		{
+			outputData(datasets.get(i),null);
+		}
+	}
+	
+	/*
+	private void performTavernaWorkflow() throws ReaderException, IOException
+	{
+		WorkflowBundleIO io = new WorkflowBundleIO();
+		WorkflowBundle ro = io.readBundle(new File("workflow.t2flow"), null);
+		ro.getMainWorkflow();
+	}
+	*/
+	
+	
 	
 	
 	private void operate() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException
@@ -268,20 +450,6 @@ public class GwasBioinf //extends ParallelWorker
 		final String schemaName = "PUBLIC";
 		
 		String q;
-		
-		
-		//preparations
-		dataCache.index(schemaName+".gencode_master", "f1");
-		dataCache.index(schemaName+".gencode_master", "f4");
-		dataCache.index(schemaName+".gencode_master", "f5");
-		dataCache.index(schemaName+".gencode_master", "f7");
-		dataCache.index(schemaName+".gencode_master", "genename");
-		
-		dataCache.index(schemaName+".MDD2CLUMPRAW", "RANK");
-		dataCache.index(schemaName+".MDD2CLUMPRAW", "six1");
-		dataCache.index(schemaName+".MDD2CLUMPRAW", "six2");
-		dataCache.index(schemaName+".MDD2CLUMPRAW", "r1");
-		dataCache.index(schemaName+".MDD2CLUMPRAW", "r2");
 		
 		//operations
 		final SQL candidateInner = new SQL()
@@ -312,7 +480,7 @@ public class GwasBioinf //extends ParallelWorker
 				SELECT("hg19chrc||':'||"+dataCache.scriptSeparateFixedSpacingRight(dataCache.scriptDoubleToVarchar("six1"),",", 3)+"||'-'||"+dataCache.scriptSeparateFixedSpacingRight(dataCache.scriptDoubleToVarchar("six2"),",", 3)+" AS cc");
 				SELECT("'=HYPERLINK(\"http://genome.ucsc.edu/cgi-bin/hgTracks?&org=Human&db=hg19&position='||hg19chrc||'%3A'||"+dataCache.scriptDoubleToVarchar("six1")+"||'-'||"+dataCache.scriptDoubleToVarchar("six2")+"||'\",\"ucsc\")' AS nucsc");
 				
-				FROM(schemaName+".MDD2CLUMPRAW");
+				FROM(schemaName+".WORK");
 				
 				WHERE("P>0 AND P<1e-1");
 				ORDER_BY("P");
@@ -336,10 +504,10 @@ public class GwasBioinf //extends ParallelWorker
 		q=new SQL()
 		{
 			{
-				SELECT("gencode_master.*");
+				SELECT("GENE_MASTER.*");
 				SELECT("(f4-20000) AS e4");
 				SELECT("(f5+20000) AS e5");
-				FROM(schemaName+".gencode_master");
+				FROM(schemaName+".GENE_MASTER");
 			}
 		}.toString();
 		dataCache.view("t2", q).commit();
@@ -379,10 +547,10 @@ public class GwasBioinf //extends ParallelWorker
 		q=new SQL()
 		{
 			{
-				SELECT("gencode_master.*");
+				SELECT("GENE_MASTER.*");
 				SELECT("(f4-10e6) AS e4");
 				SELECT("(f5+10e6) AS e5");
-				FROM(schemaName+".gencode_master");
+				FROM(schemaName+".GENE_MASTER");
 				WHERE("ttype='protein_coding'");
 			}
 		}.toString();

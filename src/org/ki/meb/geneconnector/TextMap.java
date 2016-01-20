@@ -25,6 +25,8 @@ public class TextMap
 	public static final String end ="end";
 	public static final String create ="create";
 	public static final String get ="get";
+	public static final String input ="input";
+	public static final String output ="output";
 	public static final String left ="left";
 	public static final String right ="right";
 	public static final String operate ="operate";

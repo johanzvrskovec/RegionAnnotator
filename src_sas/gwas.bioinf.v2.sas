@@ -15,11 +15,11 @@ libname md 'C:\Media\work\eclipse\gwas_bioinf\dat_sas\md'; * ~/pgc/mdd2/data/;
 * NOTE - this is the data input section. Is not general. ;
 * needs to be made general;
 * here, input is a list of regions, r0:r1-r2 (r0=chromosome, r1-r2 is hg19 base range);
-proc import out= md.mdd2clumpraw datafile= "C:\Media\work\eclipse\gwas_bioinf\inputOrig\mdd2clumpraw_orig.xlsx" 
-	dbms=xlsx REPLACE;
-sheet="table";
+proc import datafile= "C:\Media\work\eclipse\gwas_bioinf\inputOrig\md.xls" out= md.mdd2clumpraw
+	dbms=xls REPLACE;
+sheet="mdd2clumpraw";
 getnames=yes;
-guessingrows=32767;
+*guessingrows=32767;
 run;
 
 * Export existing data *;
