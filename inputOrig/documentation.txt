@@ -1,0 +1,80 @@
+PGC bioinformatics, PF Sullivan & Johan Kallberg, Karolinska Institutet, (c) 2016
+24JAN2016
+
+Metadata for Bioinformatic Sources
+File	Created	PMIDs	URL/Note	Description
+asd.genes.txt	03JAN2016	26402605 19015121	https://gene.sfari.org/autdb	ASD genes from SFARI reviews & latest exome seq study
+gencode.genes.txt	06JAN2016	22955987	http://www.gencodegenes.org/releases/19.html	GENCODE genes, v19 7/2013 release (the last based on hg19)
+gwas.catalog.txt	13NOV2015	24316577	https://www.ebi.ac.uk/gwas	NHGRI/EBI GWAS catalog, gwsig findings
+id.devdelay.genes.txt	10JUL2015	15020472 18197188 21910631 21937992 23020937 23033978 24150940 26437029	ID: OMIM, reviews, HUGO chrX, WES papers. DD: DDG2P	ID genes from OMIM, HUGO, multiple reviews; DD genes from DECIPHER
+mouse.knockout.txt	28JUN2011	26578600	http://www.informatics.jax.org	Mouse knockout phenotypes from JAX
+omim.txt	13NOV2015	18842627	http://www.omim.org	OMIM genes, Online Mendelian Inheritance in Man
+psychiatric.cnvs.txt	24JAN2016	24150940 25217958 24352232 21285140 22777127	Reviews, DECIPHER, deCODE, Eichler morbidity map	Copy number variants implicated in psychiatric disorders
+
+Variable description
+
+*** asd.genes.txt
+Col	Var	Description
+1	chr	hg19 chromosome as chr1..chr22 chrX chrY chrM
+2	bp1	starting base (1-based)
+3	bp2	ending base (1-based)
+4	geneName	standard HUGO gene name (eg DRD2 CACNA1C)
+5	type	evidence in support of this as ASD gene
+
+*** gencode.genes.txt
+Col	Var	Description
+1	chr	hg19 chromosome as chr1..chr22 chrX chrY chrM
+2	bp1	starting base (1-based)
+3	bp2	ending base (1-based)
+4	geneName	standard HUGO gene name (eg DRD2 CACNA1C)
+5	entrez	Entrez gene ID
+6	ensembl	ENSEMBL gene ID
+7	ttype	type of gene (eg protein_coding)
+8	strand	strand (+ -)
+9	product	name of product of gene
+
+*** gwas.catalog.txt
+Col	Var	Description
+1	chr	hg19 chromosome as chr1..chr22 chrX chrY chrM
+2	bp1	starting base (1-based)
+3	bp2	ending base (1-based)
+4	snpid	SNP rs ID
+5	pvalue	gwas p-value
+6	pmid	PubMed ID of paper
+7	trait	gwas human trait
+
+*** id.devdelay.genes.txt
+Col	Var	Description
+1	chr	hg19 chromosome as chr1..chr22 chrX chrY chrM
+2	bp1	starting base (1-based)
+3	bp2	ending base (1-based)
+4	geneName	standard HUGO gene name (eg DRD2 CACNA1C)
+5	type	associated disorder (eg ID or dev delay)
+
+*** mouse.knockout.txt
+Col	Var	Description
+1	chr	hg19 chromosome as chr1..chr22 chrX chrY chrM
+2	bp1	starting base (1-based)
+3	bp2	ending base (1-based)
+4	geneName	standard HUGO gene name (eg DRD2 CACNA1C)
+5	musName	standard mouse gene name
+6	phenotype	mouse knockout phenotype
+
+*** omim.txt
+Col	Var	Description
+1	chr	hg19 chromosome as chr1..chr22 chrX chrY chrM
+2	bp1	starting base (1-based)
+3	bp2	ending base (1-based)
+4	geneName	standard HUGO gene name (eg DRD2 CACNA1C)
+5	OMIMgene	OMIM gene
+6	OMIMdisease	OMIM disease
+7	type	associated condition in OMIM
+
+*** psychiatric.cnvs.txt
+Col	Var	Description
+1	chr	hg19 chromosome as chr1..chr22 chrX chrY chrM
+2	bp1	starting base (1-based)
+3	bp2	ending base (1-based)
+4	disease	CNV for what condition
+5	type	CNV type (del dup)
+6	note	additional description
