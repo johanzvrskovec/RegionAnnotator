@@ -2,4 +2,5 @@
 <config>
 	<outputfolderpath>output</outputfolderpath>
 	<inputfolderpath>input</inputfolderpath>
+	<dbcachesizekb>2000000</dbcachesizekb>
 </config>

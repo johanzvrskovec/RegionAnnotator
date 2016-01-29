@@ -1,7 +1,10 @@
 package org.ki.meb.geneconnector;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
@@ -20,6 +23,7 @@ import org.json.JSONObject;
 import org.ki.meb.common.ApplicationException;
 import org.ki.meb.common.DataCache;
 import org.ki.meb.common.IndexedMap;
+import org.ki.meb.common.Utils;
 import org.ki.meb.common.DataCache.DataEntry;
 import org.ki.meb.common.formatter.CustomFormatter;
 import org.ki.meb.common.formatter.CustomFormatter.IOType;
@@ -30,12 +34,14 @@ public class GwasBioinf //extends ParallelWorker
 {
 	
 	private CommandLine commandLine;
+	private long startTimeNanos;
 	
 	private static Options clOptions = new Options();
 	
 	private File settingConfigFile, settingInputFile, settingOutputFile;
 	private CustomFormatter.IOType settingInputFormat, settingOutputFormat;
 	private boolean settingReference, settingGene, settingOverwriteExistingTables, settingFirstRowVariableNames;
+	private int settingDBCacheSizeKB;
 	private DataCache dataCache;
 	private FilenameFilter filterExcelXlsx, filterCSV, filterTSV, filterJSON;
 	public enum EntryTemplateType {input,gene,reference};
@@ -50,9 +56,9 @@ public class GwasBioinf //extends ParallelWorker
 		clOptions.addOption("reference",false,"Enter as reference data");
 		clOptions.addOption("gene",false,"Enter as gene data");
 		clOptions.addOption("nonames",false,"The first row of data in the input files contains NO column names");
-		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Output to the specified file - Excel").hasArg().create(TextMap.output+"_text"));
-		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Output to the specified file - Excel").hasArg().create(TextMap.output+"_excel"));
-		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Output to the specified file - Excel").hasArg().create(TextMap.output+"_datacache"));
+		//clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Output to the specified file - text").hasArg().create(TextMap.output+"_text"));
+		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Output to the specified file - excel").hasArg().create(TextMap.output+"_excel"));
+		//clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Output to the specified file - datacache").hasArg().create(TextMap.output+"_datacache"));
 		clOptions.addOption(OptionBuilder.withArgName("dataset name").withDescription("Get specific database content (table/view) as exported output.").hasArg().create(TextMap.get));
 		clOptions.addOption(TextMap.output+"all",false,"Output all database content.");
 		
@@ -69,6 +75,8 @@ public class GwasBioinf //extends ParallelWorker
 
 	public GwasBioinf()
 	{
+		startTimeNanos= System.nanoTime();
+		
 		filterExcelXlsx= new FilenameFilter() 
 		{
 			@Override
@@ -105,6 +113,11 @@ public class GwasBioinf //extends ParallelWorker
 			}
 		};
 	}
+	
+	private void printTimeMeasure()
+	{
+		System.out.println("Running time: "+(System.nanoTime()-startTimeNanos)/1E9+" seconds");
+	}
 
 	private void init() throws ConfigurationException, ApplicationException
 	{
@@ -112,9 +125,10 @@ public class GwasBioinf //extends ParallelWorker
 		ConfigurationNode rootNode = config.getRootNode();
 		settingInputFile = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.inputfolderpath).get(0)).getValue());
 		settingOutputFile = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.outputfolderpath).get(0)).getValue());
+		settingDBCacheSizeKB = Integer.parseInt((String)((ConfigurationNode)rootNode.getChildren("dbcachesizekb").get(0)).getValue());
 		dataCache=new DataCache("./GwasBioinf");
 		settingInputFormat=null;
-		settingOutputFormat=IOType.CSV;
+		settingOutputFormat=IOType.EXCEL;
 		settingReference=false;
 		settingGene=false;
 		settingFirstRowVariableNames=true;
@@ -198,6 +212,14 @@ public class GwasBioinf //extends ParallelWorker
 		element.put("type", java.sql.Types.VARCHAR);
 		//element.put("optional", "true");
 		ne.namemap.put("GENENAME",element);
+		
+		element=new JSONObject();
+		element.put("type", java.sql.Types.VARCHAR);
+		ne.namemap.put("SNPID",element);
+		
+		element=new JSONObject();
+		element.put("type", java.sql.Types.DOUBLE);
+		ne.namemap.put("PVALUE",element);
 		
 		entryTemplate.put(EntryTemplateType.input, ne);
 		
@@ -290,6 +312,8 @@ public class GwasBioinf //extends ParallelWorker
 		init();
 		
 		dataCache.createCacheConnection();
+		dataCache.setDBCacheSizeKB(settingDBCacheSizeKB);
+		dataCache.commit();
 		
 		
 		inputDataFromFiles();
@@ -304,6 +328,7 @@ public class GwasBioinf //extends ParallelWorker
 		
 		dataCache.shutdownCacheConnection();
 		
+		System.out.println("THE END");
 		return this;
 	}
 	
@@ -438,6 +463,7 @@ public class GwasBioinf //extends ParallelWorker
 	
 	private void outputDataToFiles() throws InstantiationException, IllegalAccessException, ClassNotFoundException, InvalidFormatException, SQLException, ApplicationException, IOException
 	{
+		System.out.println("Outputting to files...");
 		if(commandLine.hasOption(TextMap.output+"all"))
 		{
 			outputAllData();
@@ -446,39 +472,39 @@ public class GwasBioinf //extends ParallelWorker
 		{
 			outputData(commandLine.getOptionValue(TextMap.get),null);
 		}
-		else if(commandLine.hasOption(TextMap.output+"_text"))
-		{
-			settingOutputFormat=IOType.CSV;
-			settingOutputFile = new File(commandLine.getOptionValue(TextMap.output+"_text"));
-			outputData("WORK",null);
-		}
 		else if(commandLine.hasOption(TextMap.output+"_excel"))
 		{
 			settingOutputFormat=IOType.EXCEL;
 			settingOutputFile = new File(commandLine.getOptionValue(TextMap.output+"_excel"));
-			outputData("WORK",null);
+			outputAllResultData();
 		}
-		else if(commandLine.hasOption(TextMap.output+"_datacache"))
-		{
-			settingOutputFormat=IOType.DATACACHE;
-			settingOutputFile = new File(commandLine.getOptionValue(TextMap.output+"_datacache"));
-			outputData("WORK",null);
-		}
+		
+		printTimeMeasure();
+		System.out.println("Outputted files done");
 	}
 	
-	private void outputData(String datasetName, String filename) throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException, InvalidFormatException, IOException
+	private void outputData(String datasetName, String filename, boolean appendToExcel, File nof) throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException, InvalidFormatException, IOException
 	{
 
 		CustomFormatter outputWriter = new CustomFormatter().setDataCache(dataCache).setInputType(IOType.DATACACHE);
 		File of;
 		if(filename==null)
-			filename=datasetName;
+		{
+			if(datasetName==null)
+				filename="output";
+			else
+				filename=datasetName;
+		}
 		
-		if(filename==null&&settingOutputFile.isFile())
+		if(nof!=null)
+		{
+			of=nof;
+		}
+		else if(!settingOutputFile.isDirectory())
 		{
 			of=settingOutputFile;
 		}
-		else 
+		else
 		{
 			String outputFolderPath="";
 			if(settingOutputFile.isDirectory())
@@ -502,10 +528,30 @@ public class GwasBioinf //extends ParallelWorker
 			}
 		}
 		
-		outputWriter.setPath(datasetName);
-		outputWriter.setOutputType(settingOutputFormat);
-		outputWriter.setOutputFile(of);
+		outputWriter.setPath(datasetName).setOutputType(settingOutputFormat).setOutputFile(of).setExcelAppend(appendToExcel);
 		outputWriter.write();
+	}
+	
+	private void outputData(String datasetName, String filename) throws InstantiationException, IllegalAccessException, ClassNotFoundException, InvalidFormatException, SQLException, ApplicationException, IOException
+	{
+		outputData(datasetName, filename, false, null);
+	}
+	
+	private void outputAllResultData() throws InstantiationException, IllegalAccessException, ClassNotFoundException, InvalidFormatException, SQLException, ApplicationException, IOException
+	{
+		Utils.deleteFileIfExistsOldCompatSafe(settingOutputFile);
+		
+		outputData("DOCUMENTATION",null,true, settingOutputFile);
+		outputData("WORK",null,true, settingOutputFile);
+		outputData("link_aut_loci_hg19",null,true, settingOutputFile);
+		outputData("link_G1000SV",null,true, settingOutputFile);
+		outputData("link_gproteincoupledreceptors",null,true, settingOutputFile);
+		outputData("link_id_devdelay_genes",null,true, settingOutputFile);
+		outputData("link_mouse_knockout",null,true, settingOutputFile);
+		outputData("link_nhgri_gwas",null,true, settingOutputFile);
+		outputData("link_omim",null,true, settingOutputFile);
+		outputData("link_psychiatric_cnvs",null,true, settingOutputFile);
+		outputData("link_psychlinkage",null,true, settingOutputFile);
 	}
 	
 	private void outputAllData() throws SQLException, InstantiationException, IllegalAccessException, ClassNotFoundException, InvalidFormatException, ApplicationException, IOException
@@ -529,47 +575,66 @@ public class GwasBioinf //extends ParallelWorker
 	
 	
 	
-	private void operate() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException
+	private void operate() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException, IOException
 	{
+		printTimeMeasure();
+		System.out.println("Operating...");
+		long operationStartTimeNanos = System.nanoTime();
 		
-		
-		
-		
-		//String schemaName = "APP"; 
 		final String schemaName = "PUBLIC";
-		
 		String q;
 		
+		
+		
+		
+		
+		
 		//operations
+		
+		//documentation
+		File file = new File("documentation.txt");
+		FileInputStream fis = new FileInputStream(file);
+		byte[] data = new byte[(int) file.length()];
+		fis.read(data);
+		fis.close();
+		String[] documentation = new String(data, "UTF-8").split("(\n\n|\r\n\r\n)");
+		DataEntry documentationEntry = dataCache.newEntry("documentation");
+		
+		
+
+		for(int i=0; i<documentation.length; i++)
+		{
+			JSONObject row = new JSONObject();
+			JSONObject rowData = new JSONObject();
+			JSONObject entry = new JSONObject();
+			entry.put("type", java.sql.Types.VARCHAR);
+			entry.put("value", documentation[i]);
+			//documentationEntry.namemap.put("text",entry);
+			rowData.put("text", entry);
+			row.put("data", rowData);
+			documentationEntry.rows.put(row);
+		}
+		if(dataCache.getHasTable("DOCUMENTATION"))
+			dataCache.dropTable("DOCUMENTATION");
+		dataCache.enter(documentationEntry).commit();
+		
+		
 		final SQL candidateInner = new SQL()
 		{
 			{
-				SELECT("CHR"); //hg19chrc,	r0
-				SELECT("BP1"); //six1, 		r1
-				SELECT("BP2"); //six2, 		r2
-				SELECT("RANK AS RANK_IN");
-				SELECT("SNPID");
-				SELECT("A1A2");
-				SELECT("OR");
-				SELECT("P");
-				SELECT("UCSC");
-				SELECT("CHRNR");
-				SELECT("BP");
-				SELECT("ONE1");
-				SELECT("ONE2");
-				SELECT("SE");
-				SELECT("FRQ_A_44194");
-				SELECT("FRQ_U_110741");
-				SELECT("INFO");
-				SELECT("NGT");
+				//SELECT("CHR"); //hg19chrc,	r0
+				//SELECT("BP1"); //six1, 		r1
+				//SELECT("BP2"); //six2, 		r2
+				SELECT("WORK.*");
+				
 				SELECT(dataCache.scriptSeparateFixedSpacingRight(dataCache.scriptDoubleToVarchar("bp1"),",", 3)+"||'-'||"+dataCache.scriptSeparateFixedSpacingRight(dataCache.scriptDoubleToVarchar("bp2"),",", 3)+" AS ll");
 				SELECT("chr||':'||"+dataCache.scriptSeparateFixedSpacingRight(dataCache.scriptDoubleToVarchar("bp1"),",", 3)+"||'-'||"+dataCache.scriptSeparateFixedSpacingRight(dataCache.scriptDoubleToVarchar("bp2"),",", 3)+" AS cc");
 				SELECT("'=HYPERLINK(\"http://genome.ucsc.edu/cgi-bin/hgTracks?&org=Human&db=hg19&position='||chr||'%3A'||"+dataCache.scriptDoubleToVarchar("bp1")+"||'-'||"+dataCache.scriptDoubleToVarchar("bp2")+"||'\",\"ucsc\")' AS nucsc");
 				
 				FROM(schemaName+".WORK");
 				
-				WHERE("P>0 AND P<1e-1");
-				ORDER_BY("P");
+				WHERE("PVALUE>0 AND PVALUE<1e-1");
+				ORDER_BY("PVALUE");
 			}
 		};
 		
@@ -610,7 +675,7 @@ public class GwasBioinf //extends ParallelWorker
 				SELECT("c.bp1 AS bp1_in"); //six1, 		r1
 				SELECT("c.bp2 AS bp2_in"); //six2, 		r2
 				SELECT("c.RANK");
-				SELECT("c.p");
+				SELECT("c.pvalue");
 				SELECT("g.chr AS chr_gm");
 				SELECT("g.bp1 AS bp1_gm");
 				SELECT("g.bp2 AS bp2_gm");
@@ -622,7 +687,7 @@ public class GwasBioinf //extends ParallelWorker
 				FROM(schemaName+".candidate c");
 				
 				INNER_JOIN(schemaName+".GENE_MASTER_EXPANDED g ON (c.chr=g.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp1s20k_gm","g.bp2a20k_gm")+")");
-				
+				ORDER_BY("RANK,pvalue");
 			}
 		}.toString();
 		dataCache.view("allgenes20kb", q).commit();
@@ -644,7 +709,7 @@ public class GwasBioinf //extends ParallelWorker
 				SELECT("c.bp2 AS bp2_in"); //six2, 		r2
 				SELECT("ROWNUM() AS _id");
 				SELECT("c.RANK");
-				SELECT("c.p");
+				SELECT("c.pvalue");
 				SELECT("c.CC");
 				SELECT("c.NUCSC");
 				SELECT("g.chr AS chr_gm");
@@ -679,102 +744,136 @@ public class GwasBioinf //extends ParallelWorker
 				SELECT("dist AS r2"); //* for column position;
 				FROM(schemaName+".genesPC10m");
 				WHERE("dist<100000");
-				ORDER_BY("RANK,p");
+				ORDER_BY("RANK,pvalue");
 			}
 		}.toString();
 		dataCache.view("genesPCnear", q).commit();
+		
+		printTimeMeasure();
+		System.out.println("Genes");
 		
 		//*=== nhgri gwas;
 		q=new SQL()
 		{
 			{
 				SELECT("c.RANK");
-				SELECT("c.p");
+				SELECT("c.pvalue");
 				SELECT("c.chr");
 				SELECT("c.bp1");
 				SELECT("c.bp2");
 				FROM(schemaName+".candidate c");
 				INNER_JOIN(schemaName+".nhgri_gwas r ON c.chr=r.chr AND c.bp1<=r.bp1 AND r.bp1<=c.bp2");
-				ORDER_BY("RANK,p");
+				ORDER_BY("RANK,pvalue");
 			}
 		}.toString();
 		dataCache.table("link_nhgri_gwas", q).commit();
+		
+		printTimeMeasure();
+		System.out.println("link_nhgri_gwas");
 		
 		//*=== omim;
 		q=new SQL()
 		{
 			{
-				SELECT("RANK, p, r.OMIMgene, r.OMIMDisease, r.type");
+				SELECT("RANK, pvalue, r.OMIMgene, r.OMIMDisease, r.type");
 				FROM(schemaName+".genesPCnear g");
 				INNER_JOIN(schemaName+".omim r ON g.genename_gm=r.geneName");
-				ORDER_BY("RANK,p");
+				ORDER_BY("RANK,pvalue");
 			}
 		}.toString();
 		dataCache.table("link_omim", q).commit();
+		
+		printTimeMeasure();
+		System.out.println("link_omim");
 		
 		//*=== aut_loci_hg19 ;
 		q=new SQL()
 		{
 			{
-				SELECT("RANK, p, g.geneName_gm, g.product_gm");
+				SELECT("RANK, pvalue, g.geneName_gm, g.product_gm");
 				FROM(schemaName+".genesPCnear g");
 				INNER_JOIN(schemaName+".aut_loci_hg19 r ON g.geneName_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
+				ORDER_BY("RANK,pvalue");
 			}
 		}.toString();
 		dataCache.table("link_aut_loci_hg19", q).commit();
+		
+		printTimeMeasure();
+		System.out.println("link_aut_loci_hg19");
+		
 		
 		//*=== id/dev delay ;
 		q=new SQL()
 		{
 			{
-				SELECT("RANK, p, g.geneName_gm, g.product_gm");
+				SELECT("RANK, pvalue, g.geneName_gm, g.product_gm");
 				FROM(schemaName+".genesPCnear g");
 				INNER_JOIN(schemaName+".id_devdelay_genes r ON g.geneName_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
+				ORDER_BY("RANK,pvalue");
 			}
 		}.toString();
 		dataCache.table("link_id_devdelay_genes", q).commit();
+		
+		printTimeMeasure();
+		System.out.println("link_id_devdelay_genes");
+		
 		
 		//*=== mouse knockout, jax;
 		q=new SQL()
 		{
 			{
-				SELECT("RANK, p, g.geneName_gm, g.product_gm, musName, phenotype");
+				SELECT("RANK, pvalue, g.geneName_gm, g.product_gm, musName, phenotype");
 				FROM(schemaName+".genesPCnear g");
 				INNER_JOIN(schemaName+".mouse_knockout r ON g.geneName_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
+				ORDER_BY("RANK,pvalue");
 			}
 		}.toString();
 		dataCache.table("link_mouse_knockout", q).commit();
+		
+		printTimeMeasure();
+		System.out.println("link_mouse_knockout");
+		
 		
 		//*=== psych CNVs;
 		q=new SQL()
 		{
 			{
-				SELECT("RANK, p, c.chr, c.bp1, c.bp2, r.disease, r.type, r.note");
+				SELECT("RANK, pvalue, c.chr, c.bp1, c.bp2, r.disease, r.type, r.note");
 				FROM(schemaName+".candidate c");
 				INNER_JOIN(schemaName+".psychiatric_cnvs r ON c.chr=r.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1", "c.bp2", "r.bp1", "r.bp2"));
+				ORDER_BY("RANK,pvalue");
 			}
 		}.toString();
 		dataCache.table("link_psychiatric_cnvs", q).commit();
+		
+		printTimeMeasure();
+		System.out.println("link_psychiatric_cnvs");
+		
 		
 		//*=== g1000 sv;
 		q=new SQL()
 		{
 			{
-				SELECT("RANK, p, c.chr, c.bp1, c.bp2, SVTYPE, EURAF, ASIAF, AFRAF");
+				SELECT("RANK, pvalue, c.chr, c.bp1, c.bp2, SVTYPE, EURAF, ASIAF, AFRAF");
 				SELECT("(NUM_MIN_INTEGER(c.bp2,r.bp2)-NUM_MAX_INTEGER(c.bp1,r.bp1))/(NUM_MAX_INTEGER(c.bp2,r.bp2)-NUM_MIN_INTEGER(c.bp1,r.bp1)) AS recipoverlap");
 				SELECT("'=HYPERLINK(\"http://genome.ucsc.edu/cgi-bin/hgTracks?&org=Human&db=hg19&position='||c.chr||'%3A'||"+dataCache.scriptDoubleToVarchar("c.bp1")+"||'-'||"+dataCache.scriptDoubleToVarchar("c.bp2")+"||'\",\"g1000sv\")' AS g1000sv");
 				FROM(schemaName+".candidate c");
 				INNER_JOIN(schemaName+".g1000sv r ON euraf>0.01 AND c.chr=r.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1", "c.bp2", "r.bp1", "r.bp2"));
+				ORDER_BY("RANK,pvalue");
 			}
 		}.toString();
 		dataCache.table("link_g1000sv", q).commit();
+		
+		printTimeMeasure();
+		System.out.println("link_g1000sv");
+		
 		
 		//*=== GPCRs;
 		q=new SQL()
 		{
 			{
 				SELECT("RANK");
-				SELECT("p");
+				SELECT("pvalue");
 				SELECT("g.chr_in");
 				SELECT("g.bp1_in");
 				SELECT("g.bp2_in");
@@ -783,23 +882,33 @@ public class GwasBioinf //extends ParallelWorker
 				SELECT("CLASS, FAMILY, r.BP1 AS bp1_r, r.BP2 AS bp2_r, MAPTOTAL, r.PRODUCT");
 				FROM(schemaName+".genesPCnear g");
 				INNER_JOIN(schemaName+".gproteincoupledreceptors r ON g.geneName_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
+				ORDER_BY("RANK,pvalue");
 			}
 		}.toString();
 		dataCache.table("link_gproteincoupledreceptors", q).commit();
+		
+		printTimeMeasure();
+		System.out.println("link_gproteincoupledreceptors");
+		
 		
 		
 		//*=== psych linkage meta;
 		q=new SQL()
 		{
 			{
-				SELECT("RANK, p, c.chr, c.bp1, c.bp2, r.bp1 AS bp1_r, r.bp2 AS bp2_r");
+				SELECT("RANK, pvalue, c.chr, c.bp1, c.bp2, r.bp1 AS bp1_r, r.bp2 AS bp2_r");
 				SELECT("(NUM_MIN_INTEGER(c.bp2,r.bp2)-NUM_MAX_INTEGER(c.bp1,r.bp1))/(NUM_MAX_INTEGER(c.bp2,r.bp2)-NUM_MIN_INTEGER(c.bp1,r.bp1)) AS recipoverlap");
 				FROM(schemaName+".candidate c");
 				INNER_JOIN(schemaName+".psych_linkage r ON r.study='GWL' AND r.type='MetaAnal' AND c.chr=r.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1", "c.bp2", "r.bp1", "r.bp2"));
-			//six1 IS NOT NULL AND six2 IS NOT NULL AND bp1 IS NOT NULL AND bp2 IS NOT NULL AND
+				ORDER_BY("RANK,pvalue");
 			}
 		}.toString();
 		dataCache.table("link_psychlinkage", q).commit();
+		printTimeMeasure();
+		System.out.println("link_gproteincoupledreceptors");
+
+		System.out.println("Operations done");
+		System.out.println("Operations time: "+(System.nanoTime()- operationStartTimeNanos)/1E9+" seconds");
 		
 	}
 	

@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.ki.meb.geneconnector</groupId>
   <artifactId>GwasBioinf</artifactId>
-  <version>0.5.0</version>
+  <version>0.6.0</version>
   <name>GwasBioinf</name>
   <description>org.ki.meb.geneconnector GwasBioinf</description>
   <build>
@@ -34,7 +34,7 @@
 							<includes>
           						<include>config.xml</include>
           						<include>GwasBioinf.bat</include>
-          						<include>GwasBioinf.sh</include>
+          						<include>documentation.txt</include>
           					</includes>
 							<filtering>false</filtering>
 						</resource>
