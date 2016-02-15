@@ -128,7 +128,7 @@ public class GwasBioinf //extends ParallelWorker
 		settingDBCacheSizeKB = Integer.parseInt((String)((ConfigurationNode)rootNode.getChildren("dbcachesizekb").get(0)).getValue());
 		dataCache=new DataCache("./GwasBioinf");
 		settingInputFormat=null;
-		settingOutputFormat=IOType.EXCEL;
+		settingOutputFormat=IOType.CSV;
 		settingReference=false;
 		settingGene=false;
 		settingFirstRowVariableNames=true;
@@ -315,12 +315,10 @@ public class GwasBioinf //extends ParallelWorker
 		dataCache.setDBCacheSizeKB(settingDBCacheSizeKB);
 		dataCache.commit();
 		
-		
-		inputDataFromFiles();
-		
-		
-		if((!commandLine.hasOption(TextMap.operate)&&!settingReference&&!settingGene)||Boolean.parseBoolean(commandLine.getOptionValue(TextMap.operate))==true)
+		//if((!commandLine.hasOption(TextMap.operate)&&!settingReference&&!settingGene)||Boolean.parseBoolean(commandLine.getOptionValue(TextMap.operate))==true)
+		if(commandLine.hasOption(TextMap.input))
 		{
+			inputDataFromFiles();
 			operate();
 		}
 		
@@ -633,21 +631,31 @@ public class GwasBioinf //extends ParallelWorker
 				
 				FROM(schemaName+".WORK");
 				
-				WHERE("PVALUE>0 AND PVALUE<1e-1");
-				ORDER_BY("PVALUE");
+				WHERE("(PVALUE>0 AND PVALUE<1e-5) OR PVALUE IS NULL");
+				ORDER_BY("PVALUE,CHR,BP1,BP2");
 			}
 		};
 		
 		SQL candidateOuter = new SQL()
 		{
 			{
-				SELECT("ROWNUM() AS RANK, SUB.*");
+				SELECT("ROWNUM() AS RANK,SUB.*");
 				FROM("("+candidateInner+") AS SUB");
+				ORDER_BY("CHR,BP1,BP2");
 			}
 		};
 		
 		q=candidateOuter.toString();
-		dataCache.view("CANDIDATE", q).commit();
+		dataCache.table("CANDIDATE", q).commit();
+		dataCache.index("CANDIDATE", "CHR");
+		dataCache.index("CANDIDATE", "BP1");
+		dataCache.index("CANDIDATE", "BP2");
+		dataCache.index("CANDIDATE", "GENENAME");
+		dataCache.index("CANDIDATE", "SNPID");
+		dataCache.index("CANDIDATE", "PVALUE");
+		
+		printTimeMeasure();
+		System.out.println("candidate");
 		
 		
 		//GENE_MASTER EXPANDED
@@ -690,10 +698,19 @@ public class GwasBioinf //extends ParallelWorker
 				ORDER_BY("RANK,pvalue");
 			}
 		}.toString();
-		dataCache.view("allgenes20kb", q).commit();
+		dataCache.table("allgenes20kb", q).commit();
+		dataCache.index("allgenes20kb", "chr_in");
+		dataCache.index("allgenes20kb", "bp1_in");
+		dataCache.index("allgenes20kb", "bp2_in");
+		dataCache.index("allgenes20kb", "rank");
+		dataCache.index("allgenes20kb", "pvalue");
+		dataCache.index("allgenes20kb", "chr_gm");
+		dataCache.index("allgenes20kb", "bp1_gm");
+		dataCache.index("allgenes20kb", "bp2_gm");
+		dataCache.index("allgenes20kb", "genename_gm");
 		
-		
-		
+		printTimeMeasure();
+		System.out.println("allgenes20kb");
 		
 		//*====== Candidate genes, PC & distance ======;
 		//* expand by 10mb;
@@ -707,7 +724,7 @@ public class GwasBioinf //extends ParallelWorker
 				SELECT("c.chr AS chr_in"); //hg19chrc,	r0
 				SELECT("c.bp1 AS bp1_in"); //six1, 		r1
 				SELECT("c.bp2 AS bp2_in"); //six2, 		r2
-				SELECT("ROWNUM() AS _id");
+				//SELECT("ROWNUM() AS _id");
 				SELECT("c.RANK");
 				SELECT("c.pvalue");
 				SELECT("c.CC");
@@ -731,9 +748,22 @@ public class GwasBioinf //extends ParallelWorker
 				ORDER_BY("RANK, dist");
 			}
 		}.toString();
-		dataCache.view("genesPC10m", q).commit();
+		dataCache.table("genesPC10m", q).commit();
+		dataCache.index("genesPC10m", "chr_in");
+		dataCache.index("genesPC10m", "bp1_in");
+		dataCache.index("genesPC10m", "bp2_in");
+		dataCache.index("genesPC10m", "rank");
+		dataCache.index("genesPC10m", "pvalue");
+		dataCache.index("genesPC10m", "chr_gm");
+		dataCache.index("genesPC10m", "bp1_gm");
+		dataCache.index("genesPC10m", "bp2_gm");
+		dataCache.index("genesPC10m", "genename_gm");
+		dataCache.index("genesPC10m", "ttype_gm");
+		dataCache.index("genesPC10m", "strand_gm");
+		dataCache.index("genesPC10m", "dist");
 		
-		
+		printTimeMeasure();
+		System.out.println("genesPC10m");
 		
 		//*====== PC genes near======;
 		
