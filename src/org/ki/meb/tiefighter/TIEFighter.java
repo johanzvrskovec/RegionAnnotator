@@ -64,6 +64,7 @@ public class TIEFighter
 		clOptions.addOption(OptionBuilder.withArgName("format - DATACACHE,EXCEL,CSV,TSV").withDescription("Force input format.").hasArg().create("if"));
 		clOptions.addOption(OptionBuilder.withArgName("true/false").withDescription("Overwrite existing tables with the same names. Default - true.").hasArg().create("overwrite"));
 		clOptions.addOption(OptionBuilder.withArgName("true/false").withDescription("Perform operation specifics or not. Default - true.").hasArg().create(TextMap.operate));
+		clOptions.addOption(OptionBuilder.withArgName("time limit in milliseconds").withDescription("Database connection timeout. Default 30000 milliseconds.").hasArg().create("timeout"));
 		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Config file").hasArg().create(TextMap.config));
 		
 		//clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Path to the folder of the input files used for initiation").hasArg().create("ipath"));
@@ -186,6 +187,10 @@ public class TIEFighter
 		//else if(settingGene)
 			//settingOverwriteExistingTables=false;
 		
+		if(commandLine.hasOption("timeout"))
+		{
+			dataCache.setConnectionTimeoutMilliseconds(Long.parseLong(commandLine.getOptionValue("timeout")));
+		}
 		
 		
 		//formalized entry templates, names in UPPER CASE!!!!
@@ -366,6 +371,7 @@ public class TIEFighter
 	
 	public static void main(String[] args) throws Exception
 	{
+		System.out.println("***TIEFighter***");
 		new TIEFighter().setCommandLine(constructCommandLine(args)).runCommands();
 	}
 	
@@ -544,24 +550,30 @@ public class TIEFighter
 	
 	private void outputDataToFiles() throws InstantiationException, IllegalAccessException, ClassNotFoundException, InvalidFormatException, SQLException, ApplicationException, IOException
 	{
-		System.out.println("Outputting to files...");
+		
 		if(commandLine.hasOption(TextMap.output+"all"))
 		{
+			System.out.println("Outputting to files...");
 			outputAllData();
+			System.out.println("Outputted files done");
 		}
 		else if(commandLine.hasOption(TextMap.get))
 		{
+			System.out.println("Outputting to file...");
 			outputDataToFile(commandLine.getOptionValue(TextMap.get),null,false,entryTemplate.getValue(commandLine.getOptionValue(TextMap.get)),null);
+			System.out.println("Outputted file done");
 		}
 		else if(commandLine.hasOption(TextMap.output+"_excel"))
 		{
+			System.out.println("Outputting to file...");
 			settingOutputFormat=IOType.EXCEL;
 			settingOutputFile = new File(commandLine.getOptionValue(TextMap.output+"_excel"));
 			outputAllResultData();
+			System.out.println("Outputted file done");
 		}
 		
 		printTimeMeasure();
-		System.out.println("Outputted files done");
+		
 	}
 	
 	private void outputDataToFile(String datasetName, String filename, boolean appendToExcel, DataEntry currentEntryTemplate, File nof) throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException, InvalidFormatException, IOException

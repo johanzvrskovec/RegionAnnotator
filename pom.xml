@@ -3,8 +3,8 @@
   <groupId>org.ki.meb.tiefighter</groupId>
   <artifactId>TIEFighter</artifactId>
   <version>1.0.0</version>
-  <name>GwasBioinf</name>
-  <description>org.ki.meb.geneconnector GwasBioinf</description>
+  <name>TIEFighter</name>
+  <description>org.ki.meb.tiefighter TIEFighter</description>
   <build>
     <sourceDirectory>src</sourceDirectory>
     <plugins>
@@ -33,8 +33,8 @@
 							<directory>${basedir}</directory>
 							<includes>
           						<include>config.xml</include>
-          						<include>GwasBioinf.bat</include>
-          						<include>documentation.txt</include>
+          						<include>*.bat</include>
+          						<include>*.txt</include>
           					</includes>
 							<filtering>false</filtering>
 						</resource>
@@ -89,7 +89,7 @@
 	          <manifest>
 	          	<!-- <addClasspath>true</addClasspath> -->
 	          	<!-- <manifestFile>${basedir}\\MANIFEST.MF</manifestFile> -->
-	            <mainClass>org.ki.meb.geneconnector.GwasBioinf</mainClass>
+	            <mainClass>org.ki.meb.tiefighter.TIEFighter</mainClass>
 	          </manifest>
 	        </archive>
 	      </configuration>
@@ -114,7 +114,7 @@
 		<dependency>
 			<groupId>org.ki.meb.common</groupId>
 			<artifactId>meb.common</artifactId>
-			<version>1.5.0</version>
+			<version>1.6.0</version>
 		</dependency>
   </dependencies>
 </project>
