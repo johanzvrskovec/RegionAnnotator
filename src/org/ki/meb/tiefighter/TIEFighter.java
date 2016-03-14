@@ -1,10 +1,8 @@
-package org.ki.meb.geneconnector;
+package org.ki.meb.tiefighter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
@@ -28,9 +26,8 @@ import org.ki.meb.common.DataCache.DataEntry;
 import org.ki.meb.common.formatter.CustomFormatter;
 import org.ki.meb.common.formatter.CustomFormatter.IOType;
 
-//import getl.proc.Flow;
 
-public class GwasBioinf //extends ParallelWorker
+public class TIEFighter
 {
 	
 	private CommandLine commandLine;
@@ -74,7 +71,7 @@ public class GwasBioinf //extends ParallelWorker
 		
 	}
 
-	public GwasBioinf()
+	public TIEFighter()
 	{
 		startTimeNanos= System.nanoTime();
 		
@@ -127,7 +124,7 @@ public class GwasBioinf //extends ParallelWorker
 		settingInputFile = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.inputfolderpath).get(0)).getValue());
 		settingOutputFile = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.outputfolderpath).get(0)).getValue());
 		settingDBCacheSizeKB = Integer.parseInt((String)((ConfigurationNode)rootNode.getChildren("dbcachesizekb").get(0)).getValue());
-		dataCache=new DataCache("./GwasBioinf");
+		dataCache=new DataCache("./TIEFighter");
 		settingInputFormat=null;
 		settingOutputFormat=IOType.CSV;
 		settingReference=false;
@@ -196,6 +193,8 @@ public class GwasBioinf //extends ParallelWorker
 		entryTemplate=new IndexedMap<String, DataCache.DataEntry>();
 				
 		ne=dataCache.newEntry("_USER_INPUT"); //WORK
+		ne.local=true;
+		//ne.temporary=true;
 		
 		element=new JSONObject();
 		element.put("type", java.sql.Types.INTEGER);
@@ -229,6 +228,7 @@ public class GwasBioinf //extends ParallelWorker
 		
 		
 		ne=dataCache.newEntry("USER_INPUT"); //WORK
+		ne.local=true;
 		
 		element=new JSONObject();
 		element.put("type", java.sql.Types.INTEGER);
@@ -366,11 +366,11 @@ public class GwasBioinf //extends ParallelWorker
 	
 	public static void main(String[] args) throws Exception
 	{
-		new GwasBioinf().setCommandLine(constructCommandLine(args)).runCommands();
+		new TIEFighter().setCommandLine(constructCommandLine(args)).runCommands();
 	}
 	
 	
-	private GwasBioinf runCommands() throws Exception
+	private TIEFighter runCommands() throws Exception
 	{
 		if(commandLine.hasOption(TextMap.help) || commandLine.getOptions().length==0
 				//||(!commandLine.hasOption(TextMap.config)&&!commandLine.hasOption("reference")&&!commandLine.hasOption(TextMap.operate)&&!commandLine.hasOption(TextMap.get)&&!commandLine.hasOption("getall"))
@@ -419,10 +419,10 @@ public class GwasBioinf //extends ParallelWorker
 	{
 		System.out.println("Gene Connector Command Line Application");
 		HelpFormatter formatter = new HelpFormatter();
-		formatter.printHelp("java -jar \"GwasBioinf.jar\"", "", clOptions, "", true);
+		formatter.printHelp("java -jar \"TIEFighter.jar\"", "", clOptions, "", true);
 	}
 	
-	public GwasBioinf setCommandLine(CommandLine nCommandLine)
+	public TIEFighter setCommandLine(CommandLine nCommandLine)
 	{
 		commandLine=nCommandLine;
 		return this;

@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>gwas_bioinf</name>
+	<name>TIEFighter</name>
 	<comment></comment>
 	<projects>
 		<project>MEB Common</project>
+		<project>org.json</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

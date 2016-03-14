@@ -1,4 +1,4 @@
-package org.ki.meb.geneconnector;
+package org.ki.meb.tiefighter;
 
 public class TextMap 
 {
