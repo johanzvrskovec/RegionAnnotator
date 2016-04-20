@@ -4,7 +4,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -60,6 +59,7 @@ public class TIEFighter
 	private static String clTimeout = "timeout";
 	private static String clDatabaseLocation = "db";
 	private static String clConfigFile = "config";
+	private static String clTemplate = "template";
 	
 	private static String confInputfolderpath = clInputFileFolder;
 	private static String confOutputfolderpath = clOutputFileFolder;
@@ -72,7 +72,7 @@ public class TIEFighter
 	
 	private static Options clOptions = new Options();
 	
-	private File settingConfigFile, settingInputFileFolder, settingOutputFileFolder, settingDBFolder;
+	private File settingConfigFile, settingInputFileFolder, settingOutputFileFolder, settingDBFolder, settingDocumentationTemplate;
 	private CustomFormatter.IOType settingInputFormat, settingOutputFormat;
 	private boolean settingReference, settingGene, settingOverwriteExistingTables, settingFirstRowVariableNames;
 	private int settingDBCacheSizeKB;
@@ -89,9 +89,10 @@ public class TIEFighter
 		
 		clOptions.addOption(OptionBuilder.withArgName("file/folder path").withDescription("Input from the specified file or folder.").hasArg().create(clInputFileFolder));
 		clOptions.addOption(OptionBuilder.withArgName("file/folder path").withDescription("Output to the specified file or folder.").hasArg().create(clOutputFileFolder));
-		clOptions.addOption(clReference,false,"Enter reference data");
-		clOptions.addOption(clGene,false,"Enter gene (reference) data");
-		clOptions.addOption(clNonames,false,"The first row of data in the input files contains NO column names");
+		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Documentation template for excel output.").hasArg().create(clTemplate));
+		clOptions.addOption(clReference,false,"Enter reference data.");
+		clOptions.addOption(clGene,false,"Enter gene (reference) data.");
+		clOptions.addOption(clNonames,false,"The first row of data in the input files contains NO column names.");
 		clOptions.addOption(OptionBuilder.withArgName("dataset name").withDescription("Get specific database content (table/view) as exported output.").hasArg().create(clGet));
 		clOptions.addOption(clGetall,false,"Output all database content.");
 		
@@ -100,8 +101,8 @@ public class TIEFighter
 		clOptions.addOption(OptionBuilder.withArgName("true/false").withDescription("Overwrite existing tables with the same names. Default - true.").hasArg().create(clOverwrite));
 		clOptions.addOption(OptionBuilder.withArgName("true/false").withDescription("Perform operation specifics or not. Default - true.").hasArg().create(clOperate));
 		clOptions.addOption(OptionBuilder.withArgName("time limit in milliseconds").withDescription("Database connection timeout. Default 30000 milliseconds.").hasArg().create(clTimeout));
-		clOptions.addOption(OptionBuilder.withArgName("folder path").withDescription("Database location").hasArg().create(clDatabaseLocation));
-		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Config file").hasArg().create(clConfigFile));
+		clOptions.addOption(OptionBuilder.withArgName("folder path").withDescription("Database location.").hasArg().create(clDatabaseLocation));
+		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Config file.").hasArg().create(clConfigFile));
 	}
 
 	public TIEFighter()
@@ -157,7 +158,8 @@ public class TIEFighter
 		settingInputFileFolder = new File((String)((ConfigurationNode)rootNode.getChildren(confInputfolderpath).get(0)).getValue());
 		settingOutputFileFolder = new File((String)((ConfigurationNode)rootNode.getChildren(confOutputfolderpath).get(0)).getValue());
 		settingDBCacheSizeKB = Integer.parseInt((String)((ConfigurationNode)rootNode.getChildren(confDatabaseCacheSizeKb).get(0)).getValue());
-		settingDBFolder = new File(Paths.get(".").toAbsolutePath().normalize().toString());
+		//settingDBFolder = new File(Paths.get(".").toAbsolutePath().normalize().toString()); //not for older java
+		settingDBFolder = new File(".");
 		
 		settingInputFormat=null;
 		settingOutputFormat=IOType.CSV;
@@ -173,6 +175,12 @@ public class TIEFighter
 		//dataCache=new DataCache("./TIEFighter");
 		String path = settingDBFolder.getAbsolutePath()+File.separator+"TIEFighter";
 		dataCache=new DataCache(path);
+		
+		settingDocumentationTemplate = new File("documentation.xlsx"); //default
+		if(commandLine.hasOption(clTemplate))
+		{
+			settingDocumentationTemplate=new File(commandLine.getOptionValue(clTemplate));
+		}
 		
 		if(commandLine.hasOption(clInputFileFolder))
 		{
@@ -715,11 +723,10 @@ public class TIEFighter
 		
 		
 		//append documentation/READ ME
-		File documentationExcel = new File("documentation.xlsx");
-		if(documentationExcel.exists() && !documentationExcel.isDirectory())
+		if(settingDocumentationTemplate.exists() && !settingDocumentationTemplate.isDirectory())
 		{
 			System.out.println("Importing documentation...");
-			XSSFWorkbook documentationExcelWorkbook = new XSSFWorkbook(documentationExcel);
+			XSSFWorkbook documentationExcelWorkbook = new XSSFWorkbook(settingDocumentationTemplate);
 			XSSFWorkbook outputFileWorkbook = new XSSFWorkbook();
 			XSSFSheet readMeSheetSource = documentationExcelWorkbook.getSheet("readme");
 			XSSFSheet readMeSheetTarget  = outputFileWorkbook.createSheet("README");
@@ -1014,7 +1021,7 @@ public class TIEFighter
 		q=new SQL()
 		{
 			{
-				SELECT("c.*, r.bp1 AS gwc_bp1, r.bp2 AS gwc_bp2, r.snpid AS gwc_snpid, r.pvalue AS gwc_pvalue, r.pmid, r.trait");
+				SELECT("c.*, r.bp1 AS bp1_gwc, r.bp2 AS bp2_gwc, r.snpid AS snpid_gwc, r.pvalue AS pvalue_gwc, r.pmid, r.trait");
 				FROM(schemaName+"._USER_INPUT c");
 				INNER_JOIN(schemaName+"._gwas_catalog r ON c.chr=r.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1", "c.bp2", "r.bp1", "r.bp2"));
 				ORDER_BY("INPUTID,c.chr,c.bp1,c.bp2");
