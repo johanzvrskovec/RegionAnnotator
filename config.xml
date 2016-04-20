@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config>
-	<outputfolderpath>output</outputfolderpath>
-	<inputfolderpath>input</inputfolderpath>
+	<output>output</output>
+	<input>input</input>
 	<dbcachesizekb>2000000</dbcachesizekb>
 </config>

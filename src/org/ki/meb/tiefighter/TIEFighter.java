@@ -1,10 +1,14 @@
 package org.ki.meb.tiefighter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -17,6 +21,15 @@ import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.commons.configuration.tree.ConfigurationNode;
 import org.apache.ibatis.jdbc.SQL;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.json.JSONObject;
 import org.ki.meb.common.ApplicationException;
 import org.ki.meb.common.DataCache;
@@ -30,46 +43,65 @@ import org.ki.meb.common.formatter.CustomFormatter.IOType;
 public class TIEFighter
 {
 	
+	
+	
+	private static String clHelp = TextMap.help;
+	private static String clInputFileFolder = TextMap.input;
+	private static String clOutputFileFolder = TextMap.output;
+	private static String clReference = "reference";
+	private static String clGene = "gene";
+	private static String clNonames = "nonames";
+	private static String clGet = "get";
+	private static String clGetall = "getall";
+	private static String clInputFormat = "iformat";
+	private static String clOutputFormat = "oformat";
+	private static String clOverwrite = "overwrite";
+	private static String clOperate= "operate";
+	private static String clTimeout = "timeout";
+	private static String clDatabaseLocation = "db";
+	private static String clConfigFile = "config";
+	
+	private static String confInputfolderpath = clInputFileFolder;
+	private static String confOutputfolderpath = clOutputFileFolder;
+	private static String confDatabaseCacheSizeKb = "dbcachesizekb";
+	
+	
+	
 	private CommandLine commandLine;
 	private long startTimeNanos;
 	
 	private static Options clOptions = new Options();
 	
-	private File settingConfigFile, settingInputFile, settingOutputFile;
+	private File settingConfigFile, settingInputFileFolder, settingOutputFileFolder, settingDBFolder;
 	private CustomFormatter.IOType settingInputFormat, settingOutputFormat;
 	private boolean settingReference, settingGene, settingOverwriteExistingTables, settingFirstRowVariableNames;
 	private int settingDBCacheSizeKB;
 	private DataCache dataCache;
 	private FilenameFilter filterExcelXlsx, filterCSV, filterTSV, filterJSON;
-	//public enum EntryTemplateType {_input,input,gene,reference};
 	private DataCache.DataEntry referenceEntryTemplate, linkEntryTemplate;
 	private IndexedMap<String, DataCache.DataEntry> entryTemplate;
+	private IndexedMap<String,XSSFCellStyle> excelStyle;
 	
 	static
 	{
 		//clOptions.addOption(OptionBuilder.create(TextMap.regtest)); //inactivated as default
-		clOptions.addOption(TextMap.help,false,"Print usage help.");
+		clOptions.addOption(clHelp,false,"Print usage help.");
 		
-		clOptions.addOption(OptionBuilder.withArgName("file/folder path").withDescription("Input from the specified file or folder.").hasArg().create(TextMap.input));
-		clOptions.addOption("reference",false,"Enter as reference data");
-		clOptions.addOption("gene",false,"Enter as gene data");
-		clOptions.addOption("nonames",false,"The first row of data in the input files contains NO column names");
-		//clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Output to the specified file - text").hasArg().create(TextMap.output+"_text"));
-		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Output to the specified file - excel").hasArg().create(TextMap.output+"_excel"));
-		//clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Output to the specified file - datacache").hasArg().create(TextMap.output+"_datacache"));
-		clOptions.addOption(OptionBuilder.withArgName("dataset name").withDescription("Get specific database content (table/view) as exported output.").hasArg().create(TextMap.get));
-		clOptions.addOption(TextMap.output+"all",false,"Output all database content.");
+		clOptions.addOption(OptionBuilder.withArgName("file/folder path").withDescription("Input from the specified file or folder.").hasArg().create(clInputFileFolder));
+		clOptions.addOption(OptionBuilder.withArgName("file/folder path").withDescription("Output to the specified file or folder.").hasArg().create(clOutputFileFolder));
+		clOptions.addOption(clReference,false,"Enter reference data");
+		clOptions.addOption(clGene,false,"Enter gene (reference) data");
+		clOptions.addOption(clNonames,false,"The first row of data in the input files contains NO column names");
+		clOptions.addOption(OptionBuilder.withArgName("dataset name").withDescription("Get specific database content (table/view) as exported output.").hasArg().create(clGet));
+		clOptions.addOption(clGetall,false,"Output all database content.");
 		
-		clOptions.addOption(OptionBuilder.withArgName("format - DATACACHE,EXCEL,CSV,TSV").withDescription("Force output format.").hasArg().create("of"));
-		clOptions.addOption(OptionBuilder.withArgName("format - DATACACHE,EXCEL,CSV,TSV").withDescription("Force input format.").hasArg().create("if"));
-		clOptions.addOption(OptionBuilder.withArgName("true/false").withDescription("Overwrite existing tables with the same names. Default - true.").hasArg().create("overwrite"));
-		clOptions.addOption(OptionBuilder.withArgName("true/false").withDescription("Perform operation specifics or not. Default - true.").hasArg().create(TextMap.operate));
-		clOptions.addOption(OptionBuilder.withArgName("time limit in milliseconds").withDescription("Database connection timeout. Default 30000 milliseconds.").hasArg().create("timeout"));
-		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Config file").hasArg().create(TextMap.config));
-		
-		//clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Path to the folder of the input files used for initiation").hasArg().create("ipath"));
-		
-		
+		clOptions.addOption(OptionBuilder.withArgName("format - DATACACHE,EXCEL,CSV,TSV").withDescription("Force output format.").hasArg().create(clOutputFormat));
+		clOptions.addOption(OptionBuilder.withArgName("format - DATACACHE,EXCEL,CSV,TSV").withDescription("Force input format.").hasArg().create(clInputFormat));
+		clOptions.addOption(OptionBuilder.withArgName("true/false").withDescription("Overwrite existing tables with the same names. Default - true.").hasArg().create(clOverwrite));
+		clOptions.addOption(OptionBuilder.withArgName("true/false").withDescription("Perform operation specifics or not. Default - true.").hasArg().create(clOperate));
+		clOptions.addOption(OptionBuilder.withArgName("time limit in milliseconds").withDescription("Database connection timeout. Default 30000 milliseconds.").hasArg().create(clTimeout));
+		clOptions.addOption(OptionBuilder.withArgName("folder path").withDescription("Database location").hasArg().create(clDatabaseLocation));
+		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Config file").hasArg().create(clConfigFile));
 	}
 
 	public TIEFighter()
@@ -122,25 +154,40 @@ public class TIEFighter
 	{
 		XMLConfiguration config = new XMLConfiguration(settingConfigFile);
 		ConfigurationNode rootNode = config.getRootNode();
-		settingInputFile = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.inputfolderpath).get(0)).getValue());
-		settingOutputFile = new File((String)((ConfigurationNode)rootNode.getChildren(TextMap.outputfolderpath).get(0)).getValue());
-		settingDBCacheSizeKB = Integer.parseInt((String)((ConfigurationNode)rootNode.getChildren("dbcachesizekb").get(0)).getValue());
-		dataCache=new DataCache("./TIEFighter");
+		settingInputFileFolder = new File((String)((ConfigurationNode)rootNode.getChildren(confInputfolderpath).get(0)).getValue());
+		settingOutputFileFolder = new File((String)((ConfigurationNode)rootNode.getChildren(confOutputfolderpath).get(0)).getValue());
+		settingDBCacheSizeKB = Integer.parseInt((String)((ConfigurationNode)rootNode.getChildren(confDatabaseCacheSizeKb).get(0)).getValue());
+		settingDBFolder = new File(Paths.get(".").toAbsolutePath().normalize().toString());
+		
 		settingInputFormat=null;
 		settingOutputFormat=IOType.CSV;
 		settingReference=false;
 		settingGene=false;
 		settingFirstRowVariableNames=true;
 		
-		if(commandLine.hasOption(TextMap.input))
+		if(commandLine.hasOption(clDatabaseLocation))
 		{
-			settingInputFile=new File(commandLine.getOptionValue(TextMap.input));
+			settingDBFolder=new File(commandLine.getOptionValue(clDatabaseLocation));
+		}
+		
+		//dataCache=new DataCache("./TIEFighter");
+		String path = settingDBFolder.getAbsolutePath()+File.separator+"TIEFighter";
+		dataCache=new DataCache(path);
+		
+		if(commandLine.hasOption(clInputFileFolder))
+		{
+			settingInputFileFolder=new File(commandLine.getOptionValue(clInputFileFolder));
+		}
+		
+		if(commandLine.hasOption(clOutputFileFolder))
+		{
+			settingOutputFileFolder=new File(commandLine.getOptionValue(clOutputFileFolder));
 		}
 		
 		
-		if(commandLine.hasOption("if"))
+		if(commandLine.hasOption(clInputFormat))
 		{
-			String ov = commandLine.getOptionValue("if").toUpperCase();
+			String ov = commandLine.getOptionValue(clInputFormat).toUpperCase();
 			try
 			{
 				settingInputFormat=IOType.valueOf(ov);
@@ -151,9 +198,9 @@ public class TIEFighter
 			}
 		}
 		
-		if(commandLine.hasOption("of"))
+		if(commandLine.hasOption(clOutputFormat))
 		{
-			String ov = commandLine.getOptionValue("of").toUpperCase();
+			String ov = commandLine.getOptionValue(clOutputFormat).toUpperCase();
 			try
 			{
 				settingOutputFormat=IOType.valueOf(ov);
@@ -164,32 +211,30 @@ public class TIEFighter
 			}
 		}
 		
-		if(commandLine.hasOption("reference"))
+		if(commandLine.hasOption(clReference))
 		{
 			settingReference=true;
 		}
 		
-		if(commandLine.hasOption("gene"))
+		if(commandLine.hasOption(clGene))
 		{
 			settingGene=true;
 		}
 		
-		if(commandLine.hasOption("nonames"))
+		if(commandLine.hasOption(clNonames))
 		{
 			settingFirstRowVariableNames=false;
 		}
 		
 		settingOverwriteExistingTables=true;
-		if(commandLine.hasOption("overwrite"))
+		if(commandLine.hasOption(clOverwrite))
 		{
-			settingOverwriteExistingTables=Boolean.parseBoolean(commandLine.getOptionValue("overwrite"));
+			settingOverwriteExistingTables=Boolean.parseBoolean(commandLine.getOptionValue(clOverwrite));
 		}
-		//else if(settingGene)
-			//settingOverwriteExistingTables=false;
 		
-		if(commandLine.hasOption("timeout"))
+		if(commandLine.hasOption(clTimeout))
 		{
-			dataCache.setConnectionTimeoutMilliseconds(Long.parseLong(commandLine.getOptionValue("timeout")));
+			dataCache.setConnectionTimeoutMilliseconds(Long.parseLong(commandLine.getOptionValue(clTimeout)));
 		}
 		
 		
@@ -203,7 +248,7 @@ public class TIEFighter
 		
 		element=new JSONObject();
 		element.put("type", java.sql.Types.INTEGER);
-		ne.namemap.put("_IO",element);
+		ne.namemap.put("INPUTID",element);
 
 		element=new JSONObject();
 		element.put("type", java.sql.Types.VARCHAR);
@@ -237,7 +282,7 @@ public class TIEFighter
 		
 		element=new JSONObject();
 		element.put("type", java.sql.Types.INTEGER);
-		ne.namemap.put("_IO",element);
+		ne.namemap.put("INPUTID",element);
 
 		element=new JSONObject();
 		element.put("type", java.sql.Types.VARCHAR);
@@ -266,6 +311,7 @@ public class TIEFighter
 		element=new JSONObject();
 		element.put("type", java.sql.Types.VARCHAR);
 		element.put("isExcelFormula", true);
+		element.put("isHyperlink", true);
 		ne.namemap.put("UCSC_LINK",element);
 		
 		entryTemplate.put("USER_INPUT", ne);
@@ -317,7 +363,7 @@ public class TIEFighter
 		
 		element=new JSONObject();
 		element.put("type", java.sql.Types.INTEGER);
-		ne.namemap.put("_IO",element);
+		ne.namemap.put("INPUTID",element);
 
 		element=new JSONObject();
 		element.put("type", java.sql.Types.VARCHAR);
@@ -346,11 +392,12 @@ public class TIEFighter
 		element=new JSONObject();
 		element.put("type", java.sql.Types.VARCHAR);
 		element.put("isExcelFormula", true);
+		element.put("isHyperlink", true);
 		ne.namemap.put("UCSC_LINK",element);
 		
 		linkEntryTemplate=ne;
 		
-		
+		excelStyle = new IndexedMap<String, XSSFCellStyle>();
 	}
 	
 	public static CommandLine constructCommandLine(String[] args) throws ParseException
@@ -363,7 +410,7 @@ public class TIEFighter
 		}
 		catch (Exception e)
 		{
-			commandLine = parser.parse(clOptions, new String[]{"-"+TextMap.help});
+			commandLine = parser.parse(clOptions, new String[]{"-"+clHelp});
 		}
 		return commandLine;
 	}
@@ -386,9 +433,9 @@ public class TIEFighter
 			return this;
 		}
 		
-		if(commandLine.hasOption(TextMap.config))
+		if(commandLine.hasOption(clConfigFile))
 		{
-			settingConfigFile = new File(commandLine.getOptionValue(TextMap.config));
+			settingConfigFile = new File(commandLine.getOptionValue(clConfigFile));
 		}
 		else
 		{
@@ -397,12 +444,14 @@ public class TIEFighter
 		
 		init();
 		
-		dataCache.createCacheConnection();
+		System.out.println("Waiting for database connection...");
+		dataCache.createCacheConnectionEmbedded();
+		System.out.println("Database connected");
 		dataCache.setDBCacheSizeKB(settingDBCacheSizeKB);
 		dataCache.commit();
 		
 		//if((!commandLine.hasOption(TextMap.operate)&&!settingReference&&!settingGene)||Boolean.parseBoolean(commandLine.getOptionValue(TextMap.operate))==true)
-		if(commandLine.hasOption(TextMap.input))
+		if(commandLine.hasOption(clInputFileFolder))
 		{
 			inputDataFromFiles();
 			if(!settingGene&&!settingReference)
@@ -454,33 +503,33 @@ public class TIEFighter
 		
 		inputReader.setPath(currentEntryTemplate.path);
 		
-		if(settingInputFile.isFile())
+		if(settingInputFileFolder.isFile())
 		{
-			 inputDataFromFile(settingInputFile, settingInputFormat, inputReader, currentEntryTemplate);
+			 inputDataFromFile(settingInputFileFolder, settingInputFormat, inputReader, currentEntryTemplate);
 		}
-		else if(settingInputFile.isDirectory())
+		else if(settingInputFileFolder.isDirectory())
 		{
 			
 			//import all files in input
-			File[] inputFilesJSON = settingInputFile.listFiles(filterJSON);
+			File[] inputFilesJSON = settingInputFileFolder.listFiles(filterJSON);
 			for(int iFile=0; iFile<inputFilesJSON.length; iFile++)
 			{
 				inputDataFromFile(inputFilesJSON[iFile], IOType.DATACACHE, inputReader, currentEntryTemplate);
 			}
 			
-			File[] inputFilesCsv = settingInputFile.listFiles(filterCSV);
+			File[] inputFilesCsv = settingInputFileFolder.listFiles(filterCSV);
 			for(int iFile=0; iFile<inputFilesCsv.length; iFile++)
 			{
 				inputDataFromFile(inputFilesCsv[iFile], IOType.CSV, inputReader, currentEntryTemplate);
 			}
 			
-			File[] inputFilesTsv = settingInputFile.listFiles(filterTSV);
+			File[] inputFilesTsv = settingInputFileFolder.listFiles(filterTSV);
 			for(int iFile=0; iFile<inputFilesTsv.length; iFile++)
 			{
 				inputDataFromFile(inputFilesTsv[iFile], IOType.TSV, inputReader, currentEntryTemplate);
 			}
 			
-			File[] inputFilesXlsx = settingInputFile.listFiles(filterExcelXlsx);
+			File[] inputFilesXlsx = settingInputFileFolder.listFiles(filterExcelXlsx);
 			for(int iFile=0; iFile<inputFilesXlsx.length; iFile++)
 			{
 				inputDataFromFile(inputFilesXlsx[iFile], IOType.EXCEL, inputReader, currentEntryTemplate);
@@ -527,6 +576,12 @@ public class TIEFighter
 		}
 		else if(settingReference)
 		{
+			//custom naming
+			currentEntry.path=inputFile.getName();
+			int dotIndex = currentEntry.path.lastIndexOf('.');
+			if(dotIndex>=0)
+				currentEntry.path="_"+currentEntry.path.substring(0,dotIndex).replace('.', '_');
+			
 			inputReader.setInputType(usedInputFormat).setInputFile(inputFile).read(currentEntry);
 			for(int i=0; i<currentEntryTemplate.namemap.size(); i++)
 			{
@@ -551,23 +606,22 @@ public class TIEFighter
 	private void outputDataToFiles() throws InstantiationException, IllegalAccessException, ClassNotFoundException, InvalidFormatException, SQLException, ApplicationException, IOException
 	{
 		
-		if(commandLine.hasOption(TextMap.output+"all"))
+		if(commandLine.hasOption(clGetall))
 		{
 			System.out.println("Outputting to files...");
 			outputAllData();
 			System.out.println("Outputted files done");
 		}
-		else if(commandLine.hasOption(TextMap.get))
+		else if(commandLine.hasOption(clGet))
 		{
 			System.out.println("Outputting to file...");
 			outputDataToFile(commandLine.getOptionValue(TextMap.get),null,false,entryTemplate.getValue(commandLine.getOptionValue(TextMap.get)),null);
 			System.out.println("Outputted file done");
 		}
-		else if(commandLine.hasOption(TextMap.output+"_excel"))
+		else if(commandLine.hasOption(clOutputFileFolder)||commandLine.hasOption(clOutputFormat))
 		{
+			//Outputting result data
 			System.out.println("Outputting to file...");
-			settingOutputFormat=IOType.EXCEL;
-			settingOutputFile = new File(commandLine.getOptionValue(TextMap.output+"_excel"));
 			outputAllResultData();
 			System.out.println("Outputted file done");
 		}
@@ -579,7 +633,7 @@ public class TIEFighter
 	private void outputDataToFile(String datasetName, String filename, boolean appendToExcel, DataEntry currentEntryTemplate, File nof) throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException, InvalidFormatException, IOException
 	{
 
-		CustomFormatter outputWriter = new CustomFormatter().setDataCache(dataCache).setInputType(IOType.DATACACHE);
+		CustomFormatter outputWriter = new CustomFormatter().setDataCache(dataCache).setInputType(IOType.DATACACHE).setExcelStyle(excelStyle);
 		File of;
 		if(filename==null)
 		{
@@ -589,39 +643,37 @@ public class TIEFighter
 				filename=datasetName;
 		}
 		
-		if(nof!=null)
+		if(nof!=null&&!nof.isDirectory())
 		{
 			of=nof;
 		}
-		else if(!settingOutputFile.isDirectory())
+		else if(!settingOutputFileFolder.isDirectory())
 		{
-			of=settingOutputFile;
+			of=settingOutputFileFolder;
 		}
 		else
 		{
 			String outputFolderPath="";
-			if(settingOutputFile.isDirectory())
-				outputFolderPath= settingOutputFile.getAbsolutePath();
+			if(settingOutputFileFolder.isDirectory())
+				outputFolderPath= settingOutputFileFolder.getAbsolutePath()+File.separator;
 			
 			if(settingOutputFormat==IOType.CSV)
 			{
-				of=new File(outputFolderPath+File.separator+filename+".csv");
+				of=new File(outputFolderPath+filename+".csv");
 			}
 			else if(settingOutputFormat==IOType.TSV)
 			{
-				of=new File(outputFolderPath+File.separator+filename+".tsv");
+				of=new File(outputFolderPath+filename+".tsv");
 			}
 			else if(settingOutputFormat==IOType.EXCEL)
 			{
-				of=new File(outputFolderPath+File.separator+filename+".xlsx");
+				of=new File(outputFolderPath+filename+".xlsx");
 			}
 			else
 			{
-				of=new File(outputFolderPath+File.separator+filename+".json");
+				of=new File(outputFolderPath+filename+".json");
 			}
 		}
-		
-		
 		
 		
 		outputWriter.setPath(datasetName).setOutputType(settingOutputFormat).setOutputFile(of).setExcelAppend(appendToExcel).setOutputSkipEmptyColumns(true);
@@ -633,16 +685,121 @@ public class TIEFighter
 	
 	private void outputAllResultData() throws InstantiationException, IllegalAccessException, ClassNotFoundException, InvalidFormatException, SQLException, ApplicationException, IOException
 	{
-		Utils.deleteFileIfExistsOldCompatSafe(settingOutputFile);
 		
-		outputDataToFile("README",null,true, null, settingOutputFile);
-		outputDataToFile("USER_INPUT",null,true, entryTemplate.getValue("USER_INPUT"), settingOutputFile);
-		outputDataToFile("link_gwas_catalog",null,true, linkEntryTemplate, settingOutputFile);
-		outputDataToFile("link_omim",null,true, linkEntryTemplate, settingOutputFile);
-		outputDataToFile("link_psychiatric_cnvs",null,true, linkEntryTemplate, settingOutputFile);
-		outputDataToFile("link_asd_genes",null,true, linkEntryTemplate, settingOutputFile);
-		outputDataToFile("link_id_devdelay_genes",null,true, linkEntryTemplate, settingOutputFile);
-		outputDataToFile("link_mouse_knockout",null,true, linkEntryTemplate, settingOutputFile);
+		//excel composite file as standard
+		if(!commandLine.hasOption(clOutputFormat)||settingOutputFormat==IOType.EXCEL)
+		{
+			String filename = clOutputFileFolder+"_excel";
+			settingOutputFormat=IOType.EXCEL;
+		
+			if(!commandLine.hasOption(clOutputFileFolder))
+			{
+				if(settingInputFileFolder!=null&&!settingInputFileFolder.isDirectory())
+				{
+					filename = settingInputFileFolder.getName();
+					String outputFolderPath="";
+					if(settingOutputFileFolder.isDirectory())
+						outputFolderPath= settingOutputFileFolder.getAbsolutePath()+File.separator;
+					if(filename.indexOf('.')>=0)
+						filename = filename.substring(0,filename.lastIndexOf("."));
+					
+					settingOutputFileFolder = new File(outputFolderPath+filename+".xlsx");
+				}
+			}
+			
+			
+		}
+		
+		if(!settingOutputFileFolder.isDirectory())
+			Utils.deleteFileIfExistsOldCompatSafe(settingOutputFileFolder);
+		
+		
+		//append documentation/READ ME
+		File documentationExcel = new File("documentation.xlsx");
+		if(documentationExcel.exists() && !documentationExcel.isDirectory())
+		{
+			System.out.println("Importing documentation...");
+			XSSFWorkbook documentationExcelWorkbook = new XSSFWorkbook(documentationExcel);
+			XSSFWorkbook outputFileWorkbook = new XSSFWorkbook();
+			XSSFSheet readMeSheetSource = documentationExcelWorkbook.getSheet("readme");
+			XSSFSheet readMeSheetTarget  = outputFileWorkbook.createSheet("README");
+			
+			//Style copy
+			for(int i=0; i<documentationExcelWorkbook.getNumCellStyles();i++)
+			{
+				String styleCallsign = "read_me"+i;
+				XSSFCellStyle newCellStyle;
+				newCellStyle = outputFileWorkbook.createCellStyle();
+				newCellStyle.cloneStyleFrom(documentationExcelWorkbook.getCellStyleAt(i));
+				excelStyle.put(styleCallsign,newCellStyle);
+			}
+			
+			//Iterator<Row> iRow = readMeSheetSource.rowIterator();
+			int irow =0;
+			for (Row crow : readMeSheetSource)
+			{
+				XSSFRow trow = readMeSheetTarget.createRow(irow++);
+				for(Cell ccell : crow)
+				{
+					
+					XSSFCell tcell = trow.createCell(ccell.getColumnIndex());
+					int type = ccell.getCellType();
+					tcell.setCellType(ccell.getCellType());
+					//tcell.setCellStyle(ccell.getCellStyle()); //not working
+					int cindex = ccell.getCellStyle().getIndex();
+					//System.out.println("Style index: "+cindex);
+					
+					XSSFCellStyle newCellStyle;
+					newCellStyle=excelStyle.getValueAt(cindex);
+					tcell.setCellStyle(newCellStyle);
+					
+					if(type==XSSFCell.CELL_TYPE_BLANK||type==XSSFCell.CELL_TYPE_ERROR)
+					{
+						//nothing
+					}
+					else if(type==Cell.CELL_TYPE_BOOLEAN || (type==Cell.CELL_TYPE_FORMULA && ccell.getCachedFormulaResultType()==Cell.CELL_TYPE_BOOLEAN))
+					{
+						tcell.setCellValue(ccell.getBooleanCellValue());
+					}
+					else if(type==Cell.CELL_TYPE_NUMERIC || (type==Cell.CELL_TYPE_FORMULA && ccell.getCachedFormulaResultType()==Cell.CELL_TYPE_NUMERIC))
+					{
+						if (DateUtil.isCellDateFormatted(ccell))
+							tcell.setCellValue(ccell.getDateCellValue());
+						else 
+							tcell.setCellValue(ccell.getNumericCellValue());
+					}
+					else if(type==Cell.CELL_TYPE_STRING || (type==Cell.CELL_TYPE_FORMULA && ccell.getCachedFormulaResultType()==Cell.CELL_TYPE_STRING))
+					{
+						tcell.setCellValue(ccell.getRichStringCellValue());
+					}
+					
+				}
+			}
+			
+			//column sizes
+			for(int i=0; i<10;i++)
+			{
+				readMeSheetTarget.autoSizeColumn(i);
+			}
+			//System.out.println("Num styles after read me import:"+outputFileWorkbook.getNumCellStyles());
+			FileOutputStream fileOut = new FileOutputStream(settingOutputFileFolder);
+			outputFileWorkbook.write(fileOut);
+		    fileOut.close();
+			outputFileWorkbook.close();
+			documentationExcelWorkbook.close();
+			System.out.println("Documentation import done. Continuing with outputting files...");
+		}
+		
+		//outputDataToFile("README",null,true, null, settingOutputFileFolder);
+		outputDataToFile("USER_INPUT",null,true, entryTemplate.getValue("USER_INPUT"), settingOutputFileFolder);
+		outputDataToFile("GENE_MASTER",null,true, linkEntryTemplate, settingOutputFileFolder);
+		outputDataToFile("gwas_catalog",null,true, linkEntryTemplate, settingOutputFileFolder);
+		outputDataToFile("omim",null,true, linkEntryTemplate, settingOutputFileFolder);
+		outputDataToFile("psychiatric_cnvs",null,true, linkEntryTemplate, settingOutputFileFolder);
+		outputDataToFile("asd_genes",null,true, linkEntryTemplate, settingOutputFileFolder);
+		outputDataToFile("id_devdelay_genes",null,true, linkEntryTemplate, settingOutputFileFolder);
+		outputDataToFile("mouse_knockout",null,true, linkEntryTemplate, settingOutputFileFolder);
+		
 	}
 	
 	private void outputAllData() throws SQLException, InstantiationException, IllegalAccessException, ClassNotFoundException, InvalidFormatException, ApplicationException, IOException
@@ -683,15 +840,15 @@ public class TIEFighter
 		//operations
 		
 		//documentation
-		File file = new File("documentation.txt");
-		FileInputStream fis = new FileInputStream(file);
-		byte[] data = new byte[(int) file.length()];
+		/*
+		File documentationTxt = new File("documentation.txt");
+		FileInputStream fis = new FileInputStream(documentationTxt);
+		byte[] data = new byte[(int) documentationTxt.length()];
 		fis.read(data);
 		fis.close();
 		//String[] documentation = new String(data, "UTF-8").split("(\n\n|\r\n\r\n)");
 		String[] documentation = {new String(data, "UTF-8")};
 		DataEntry documentationEntry = dataCache.newEntry("README");
-		
 		
 
 		for(int i=0; i<documentation.length; i++)
@@ -709,6 +866,16 @@ public class TIEFighter
 		if(dataCache.getHasTable("README"))
 			dataCache.dropTable("README");
 		dataCache.enter(documentationEntry).commit();
+		*/
+		
+		dataCache.index("_USER_INPUT", "INPUTID");
+		dataCache.index("_USER_INPUT", "CHR");
+		dataCache.index("_USER_INPUT", "BP1");
+		dataCache.index("_USER_INPUT", "BP2");
+		dataCache.index("_USER_INPUT", "GENENAME");
+		dataCache.index("_USER_INPUT", "SNPID");
+		dataCache.index("_USER_INPUT", "PVALUE");
+		
 		
 		
 		final SQL userInput = new SQL()
@@ -719,32 +886,15 @@ public class TIEFighter
 				//SELECT("BP2"); //six2, 		r2
 				SELECT("_USER_INPUT.*"); //WORK
 				SELECT("chr||':'||"+dataCache.scriptSeparateFixedSpacingRight(dataCache.scriptDoubleToVarchar("bp1"),",", 3)+"||'-'||"+dataCache.scriptSeparateFixedSpacingRight(dataCache.scriptDoubleToVarchar("bp2"),",", 3)+" AS location");
-				//SELECT(dataCache.scriptSeparateFixedSpacingRight(dataCache.scriptDoubleToVarchar("bp1"),",", 3)+"||'-'||"+dataCache.scriptSeparateFixedSpacingRight(dataCache.scriptDoubleToVarchar("bp2"),",", 3)+" AS ll");
-				//SELECT("chr||':'||"+dataCache.scriptSeparateFixedSpacingRight(dataCache.scriptDoubleToVarchar("bp1"),",", 3)+"||'-'||"+dataCache.scriptSeparateFixedSpacingRight(dataCache.scriptDoubleToVarchar("bp2"),",", 3)+" AS cc");
 				SELECT("'HYPERLINK(\"http://genome.ucsc.edu/cgi-bin/hgTracks?&org=Human&db=hg19&position='||chr||'%3A'||"+dataCache.scriptDoubleToVarchar("bp1")+"||'-'||"+dataCache.scriptDoubleToVarchar("bp2")+"||'\",\"ucsc\")' AS UCSC_LINK");
-				
 				FROM(schemaName+"._USER_INPUT");
-				
-				//WHERE("(PVALUE>0 AND PVALUE<1e-5) OR PVALUE IS NULL");
-				//ORDER_BY("PVALUE,CHR,BP1,BP2");
-				ORDER_BY("_IO,CHR,BP1,BP2");
+				ORDER_BY("INPUTID,CHR,BP1,BP2");
 			}
 		};
-		
-		/*
-		SQL candidateOuter = new SQL()
-		{
-			{
-				SELECT("ROWNUM() AS RANK,SUB.*");
-				FROM("("+candidateInner+") AS SUB");
-				ORDER_BY("CHR,BP1,BP2");
-			}
-		};
-		*/
 		
 		q=userInput.toString();
 		dataCache.table("USER_INPUT", q).commit(); //candidate
-		dataCache.index("USER_INPUT", "_IO");
+		dataCache.index("USER_INPUT", "INPUTID");
 		dataCache.index("USER_INPUT", "CHR");
 		dataCache.index("USER_INPUT", "BP1");
 		dataCache.index("USER_INPUT", "BP2");
@@ -781,7 +931,6 @@ public class TIEFighter
 				//SELECT("c.bp1 AS bp1_in"); //six1, 		r1
 				//SELECT("c.bp2 AS bp2_in"); //six2, 		r2
 				SELECT("c.*");
-				//SELECT("c.pvalue");
 				SELECT("g.chr AS chr_gm");
 				SELECT("g.bp1 AS bp1_gm");
 				SELECT("g.bp2 AS bp2_gm");
@@ -793,11 +942,11 @@ public class TIEFighter
 				FROM(schemaName+".USER_INPUT c");
 				
 				INNER_JOIN(schemaName+".GENE_MASTER_EXPANDED g ON (c.chr=g.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp1s20k_gm","g.bp2a20k_gm")+")");
-				ORDER_BY("_IO,chr,bp1,bp2");
+				ORDER_BY("INPUTID,chr,bp1,bp2");
 			}
 		}.toString();
 		dataCache.table("GENES_IN_INTERVAL", q).commit();
-		dataCache.index("GENES_IN_INTERVAL", "_IO");
+		dataCache.index("GENES_IN_INTERVAL", "INPUTID");
 		dataCache.index("GENES_IN_INTERVAL", "chr");
 		dataCache.index("GENES_IN_INTERVAL", "bp1");
 		dataCache.index("GENES_IN_INTERVAL", "bp2");
@@ -818,48 +967,21 @@ public class TIEFighter
 		q=new SQL()
 		{
 			{
-				//SELECT("_IO");
-				//SELECT("c.chr AS chr_in"); //hg19chrc,	r0
-				//SELECT("c.bp1 AS bp1_in"); //six1, 		r1
-				//SELECT("c.bp2 AS bp2_in"); //six2, 		r2
-				//SELECT("ROWNUM() AS _id");
-				//SELECT("c.RANK");
-				//SELECT("c.pvalue");
-				//SELECT("c.CC");
-				//SELECT("c.NUCSC");
 				SELECT("c.*");
-				SELECT("g.chr AS chr_gm");
-				SELECT("g.bp1 AS bp1_gm");
-				SELECT("g.bp2 AS bp2_gm");
 				SELECT("g.genename AS genename_gm");
-				SELECT("g.entrez AS entrez_gm");
-				SELECT("g.ensembl AS ensembl_gm");
-				SELECT("g.ttype AS ttype_gm");
-				SELECT("g.strand AS strand_gm");
-				//SELECT("g.STATUS");
-				SELECT("g.product AS product_gm");
 				SELECT("( CASE WHEN ("+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp1","g.bp2")+") THEN 0 WHEN c.bp1 IS NULL OR c.bp2 IS NULL THEN 9e9 ELSE NUM_MAX_INTEGER(ABS(c.bp1-g.bp2),ABS(c.bp2-g.bp1)) END) dist");
-				//SELECT("( CASE WHEN ("+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp1s10m_gm","g.bp2a10m_gm")+") THEN 0 WHEN c.bp1 IS NULL OR c.bp2 IS NULL THEN 9e9 ELSE NUM_MIN_INTEGER(NUM_MIN_INTEGER(ABS(c.bp1-g.bp1),ABS(c.bp2-g.bp1)),NUM_MIN_INTEGER(ABS(c.bp1-g.bp2),ABS(c.bp2-g.bp2))) END) dist");
-				FROM(schemaName+".USER_INPUT c");
+				FROM(schemaName+"._USER_INPUT c");
 				INNER_JOIN(schemaName+".GENE_MASTER_EXPANDED g ON (g.ttype='protein_coding' AND c.chr=g.chr AND ("+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp1s10m_gm","g.bp1")+" OR "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp2","g.bp2a10m_gm")+"))");
-				//INNER_JOIN(schemaName+".GENE_MASTER_EXPANDED g ON (g.ttype='protein_coding' AND c.chr=g.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp1s10m_gm","g.bp2a10m_gm")+")");
-				//LEFT_OUTER_JOIN
-				ORDER_BY("_IO,chr,bp1,bp2");
+				ORDER_BY("INPUTID,chr,bp1,bp2");
 			}
 		}.toString();
 		dataCache.table("GENES_PROTEIN_CODING", q).commit();
-		dataCache.index("GENES_PROTEIN_CODING", "_IO");
+		dataCache.index("GENES_PROTEIN_CODING", "INPUTID");
 		dataCache.index("GENES_PROTEIN_CODING", "chr");
 		dataCache.index("GENES_PROTEIN_CODING", "bp1");
 		dataCache.index("GENES_PROTEIN_CODING", "bp2");
 		dataCache.index("GENES_PROTEIN_CODING", "pvalue");
-		dataCache.index("GENES_PROTEIN_CODING", "chr_gm");
-		dataCache.index("GENES_PROTEIN_CODING", "bp1_gm");
-		dataCache.index("GENES_PROTEIN_CODING", "bp2_gm");
 		dataCache.index("GENES_PROTEIN_CODING", "genename_gm");
-		dataCache.index("GENES_PROTEIN_CODING", "ttype_gm");
-		dataCache.index("GENES_PROTEIN_CODING", "strand_gm");
-		dataCache.index("GENES_PROTEIN_CODING", "dist");
 		
 		printTimeMeasure();
 		System.out.println("GENES_PROTEIN_CODING"); //genesPC10m
@@ -869,11 +991,10 @@ public class TIEFighter
 		q=new SQL()
 		{
 			{
-				SELECT("*");
-				SELECT("dist AS r2"); //* for column position;
-				FROM(schemaName+".GENES_PROTEIN_CODING");
+				SELECT("g.*");
+				FROM(schemaName+".GENES_PROTEIN_CODING g");
 				WHERE("dist<100000");
-				ORDER_BY("_IO,chr,bp1,bp2");
+				ORDER_BY("INPUTID,chr,bp1,bp2");
 			}
 		}.toString();
 		dataCache.view("GENES_PROTEIN_CODING_NEAR", q).commit(); //genesPCnear
@@ -893,38 +1014,16 @@ public class TIEFighter
 		q=new SQL()
 		{
 			{
-				SELECT("c.*");
-				//SELECT("c._IO,c.pvalue,c.chr,c.bp1,c.bp2");
-				FROM(schemaName+".USER_INPUT c");
-				INNER_JOIN(schemaName+".gwas_catalog r ON c.chr=r.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1", "c.bp2", "r.bp1", "r.bp2"));
-				ORDER_BY("_IO,c.chr,c.bp1,c.bp2");
+				SELECT("c.*, r.bp1 AS gwc_bp1, r.bp2 AS gwc_bp2, r.snpid AS gwc_snpid, r.pvalue AS gwc_pvalue, r.pmid, r.trait");
+				FROM(schemaName+"._USER_INPUT c");
+				INNER_JOIN(schemaName+"._gwas_catalog r ON c.chr=r.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1", "c.bp2", "r.bp1", "r.bp2"));
+				ORDER_BY("INPUTID,c.chr,c.bp1,c.bp2");
 			}
 		}.toString();
-		dataCache.table("link_gwas_catalog", q).commit();
+		dataCache.table("gwas_catalog", q).commit();
 		
 		printTimeMeasure();
-		System.out.println("link_gwas_catalog");
-		
-		//*=== nhgri gwas;
-		/*
-		q=new SQL()
-		{
-			{
-				SELECT("c._IO");
-				SELECT("c.pvalue");
-				SELECT("c.chr");
-				SELECT("c.bp1");
-				SELECT("c.bp2");
-				FROM(schemaName+".candidate c");
-				INNER_JOIN(schemaName+".nhgri_gwas r ON c.chr=r.chr AND c.bp1<=r.bp1 AND r.bp1<=c.bp2");
-				ORDER_BY("_IO,c.chr,c.bp1,c.bp2");
-			}
-		}.toString();
-		dataCache.table("link_nhgri_gwas", q).commit();
-		
-		printTimeMeasure();
-		System.out.println("link_nhgri_gwas");
-		*/
+		System.out.println("gwas_catalog");
 		
 		
 		//*=== omim;
@@ -933,46 +1032,29 @@ public class TIEFighter
 			{
 				SELECT("g.*, r.OMIMgene, r.OMIMDisease, r.type");
 				FROM(schemaName+".GENES_PROTEIN_CODING_NEAR g");
-				INNER_JOIN(schemaName+".omim r ON g.genename_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
-				ORDER_BY("_IO,chr,bp1,bp2");
+				INNER_JOIN(schemaName+"._omim r ON g.genename_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
+				ORDER_BY("INPUTID,chr,bp1,bp2");
 			}
 		}.toString();
-		dataCache.table("link_omim", q).commit();
+		dataCache.table("omim", q).commit();
 		
 		printTimeMeasure();
-		System.out.println("link_omim");
-		
-		//*=== aut_loci_hg19 ;
-		/*
-		q=new SQL()
-		{
-			{
-				SELECT("_IO, pvalue, g.geneName_gm, g.product_gm");
-				FROM(schemaName+".genesPCnear g");
-				INNER_JOIN(schemaName+".aut_loci_hg19 r ON g.geneName_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
-				ORDER_BY("_IO,chr_in,bp1_in,bp2_in");
-			}
-		}.toString();
-		dataCache.table("link_aut_loci_hg19", q).commit();
-		
-		printTimeMeasure();
-		System.out.println("link_aut_loci_hg19");
-		*/
+		System.out.println("omim");
 		
 		//*=== psych CNVs;
 		q=new SQL()
 		{
 			{
 				SELECT("c.*, r.disease, r.type, r.note");
-				FROM(schemaName+".USER_INPUT c");
-				INNER_JOIN(schemaName+".psychiatric_cnvs r ON c.chr=r.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1", "c.bp2", "r.bp1", "r.bp2"));
-				ORDER_BY("_IO,c.chr,c.bp1,c.bp2");
+				FROM(schemaName+"._USER_INPUT c");
+				INNER_JOIN(schemaName+"._psychiatric_cnvs r ON c.chr=r.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1", "c.bp2", "r.bp1", "r.bp2"));
+				ORDER_BY("INPUTID,c.chr,c.bp1,c.bp2");
 			}
 		}.toString();
-		dataCache.table("link_psychiatric_cnvs", q).commit();
+		dataCache.table("psychiatric_cnvs", q).commit();
 		
 		printTimeMeasure();
-		System.out.println("link_psychiatric_cnvs");
+		System.out.println("psychiatric_cnvs");
 		
 		
 		//*=== asd genes;
@@ -981,14 +1063,14 @@ public class TIEFighter
 			{
 				SELECT("g.*, r.type");
 				FROM(schemaName+".GENES_PROTEIN_CODING_NEAR g");
-				INNER_JOIN(schemaName+".asd_genes r ON g.genename_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
-				ORDER_BY("_IO,chr,bp1,bp2");
+				INNER_JOIN(schemaName+"._asd_genes r ON g.genename_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
+				ORDER_BY("INPUTID,chr,bp1,bp2");
 			}
 		}.toString();
-		dataCache.table("link_asd_genes", q).commit();
+		dataCache.table("asd_genes", q).commit();
 		
 		printTimeMeasure();
-		System.out.println("link_asd_genes");
+		System.out.println("asd_genes");
 		
 		
 		//*=== id/dev delay ;
@@ -997,14 +1079,14 @@ public class TIEFighter
 			{
 				SELECT("g.*");
 				FROM(schemaName+".GENES_PROTEIN_CODING_NEAR g");
-				INNER_JOIN(schemaName+".id_devdelay_genes r ON g.geneName_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
-				ORDER_BY("_IO,chr,bp1,bp2");
+				INNER_JOIN(schemaName+"._id_devdelay_genes r ON g.geneName_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
+				ORDER_BY("INPUTID,chr,bp1,bp2");
 			}
 		}.toString();
-		dataCache.table("link_id_devdelay_genes", q).commit();
+		dataCache.table("id_devdelay_genes", q).commit();
 		
 		printTimeMeasure();
-		System.out.println("link_id_devdelay_genes");
+		System.out.println("id_devdelay_genes");
 		
 		
 		//*=== mouse knockout, jax;
@@ -1013,77 +1095,16 @@ public class TIEFighter
 			{
 				SELECT("g.*, r.musName, r.phenotype");
 				FROM(schemaName+".GENES_PROTEIN_CODING_NEAR g");
-				INNER_JOIN(schemaName+".mouse_knockout r ON g.geneName_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
-				ORDER_BY("_IO,chr,bp1,bp2");
+				INNER_JOIN(schemaName+"._mouse_knockout r ON g.geneName_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
+				ORDER_BY("INPUTID,chr,bp1,bp2");
 			}
 		}.toString();
-		dataCache.table("link_mouse_knockout", q).commit();
+		dataCache.table("mouse_knockout", q).commit();
 		
 		printTimeMeasure();
-		System.out.println("link_mouse_knockout");
+		System.out.println("mouse_knockout");
 		
 		
-		
-		//*=== g1000 sv;
-		/*
-		q=new SQL()
-		{
-			{
-				SELECT("_IO, pvalue, c.chr, c.bp1, c.bp2, SVTYPE, EURAF, ASIAF, AFRAF");
-				SELECT("(NUM_MIN_INTEGER(c.bp2,r.bp2)-NUM_MAX_INTEGER(c.bp1,r.bp1))/(NUM_MAX_INTEGER(c.bp2,r.bp2)-NUM_MIN_INTEGER(c.bp1,r.bp1)) AS recipoverlap");
-				SELECT("'=HYPERLINK(\"http://genome.ucsc.edu/cgi-bin/hgTracks?&org=Human&db=hg19&position='||c.chr||'%3A'||"+dataCache.scriptDoubleToVarchar("c.bp1")+"||'-'||"+dataCache.scriptDoubleToVarchar("c.bp2")+"||'\",\"g1000sv\")' AS g1000sv");
-				FROM(schemaName+".candidate c");
-				INNER_JOIN(schemaName+".g1000sv r ON euraf>0.01 AND c.chr=r.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1", "c.bp2", "r.bp1", "r.bp2"));
-				ORDER_BY("_IO,c.chr,c.bp1,c.bp2");
-			}
-		}.toString();
-		dataCache.table("link_g1000sv", q).commit();
-		
-		printTimeMeasure();
-		System.out.println("link_g1000sv");
-		*/
-		
-		//*=== GPCRs;
-		/*
-		q=new SQL()
-		{
-			{
-				SELECT("_IO");
-				SELECT("pvalue");
-				SELECT("g.chr_in");
-				SELECT("g.bp1_in");
-				SELECT("g.bp2_in");
-				SELECT("g.r2");		//TODO  ???
-				SELECT("g.geneName_gm");
-				SELECT("CLASS, FAMILY, r.BP1 AS bp1_r, r.BP2 AS bp2_r, MAPTOTAL, r.PRODUCT");
-				FROM(schemaName+".genesPCnear g");
-				INNER_JOIN(schemaName+".gproteincoupledreceptors r ON g.geneName_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
-				ORDER_BY("_IO,chr_in,bp1_in,bp2_in");
-			}
-		}.toString();
-		dataCache.table("link_gproteincoupledreceptors", q).commit();
-		
-		printTimeMeasure();
-		System.out.println("link_gproteincoupledreceptors");
-		*/
-		
-		
-		//*=== psych linkage meta;
-		/*
-		q=new SQL()
-		{
-			{
-				SELECT("_IO, pvalue, c.chr, c.bp1, c.bp2, r.bp1 AS bp1_r, r.bp2 AS bp2_r");
-				SELECT("(NUM_MIN_INTEGER(c.bp2,r.bp2)-NUM_MAX_INTEGER(c.bp1,r.bp1))/(NUM_MAX_INTEGER(c.bp2,r.bp2)-NUM_MIN_INTEGER(c.bp1,r.bp1)) AS recipoverlap");
-				FROM(schemaName+".candidate c");
-				INNER_JOIN(schemaName+".psych_linkage r ON r.study='GWL' AND r.type='MetaAnal' AND c.chr=r.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1", "c.bp2", "r.bp1", "r.bp2"));
-				ORDER_BY("_IO,c.chr,c.bp1,c.bp2");
-			}
-		}.toString();
-		dataCache.table("link_psychlinkage", q).commit();
-		printTimeMeasure();
-		System.out.println("link_psychlinkage");
-		 */
 		System.out.println("Operations done");
 		System.out.println("Operations time: "+(System.nanoTime()- operationStartTimeNanos)/1E9+" seconds");
 		
