@@ -947,7 +947,7 @@ public class TIEFighter
 		}.toString();
 		dataCache.view("GENE_MASTER_EXPANDED", q).commit();
 		
-		
+		/*
 		//*====== Candidate genes (all) for bioinformatics ======;
 		//*=== Genes: GENCODE v17 genes in bin, expand by 20kb;
 		
@@ -985,6 +985,7 @@ public class TIEFighter
 		
 		printTimeMeasure();
 		System.out.println("GENES_IN_INTERVAL"); //allgenes20kb
+		*/
 		
 		//*====== Candidate genes, PC & distance ======;
 		//* expand by 10mb;
