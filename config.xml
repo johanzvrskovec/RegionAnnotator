@@ -2,5 +2,6 @@
 <config>
 	<output>output</output>
 	<input>input</input>
+	<temp>output</temp>
 	<dbcachesizekb>2000000</dbcachesizekb>
 </config>

@@ -1,13 +1,10 @@
 package org.ki.meb.tiefighter;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -21,7 +18,6 @@ import org.apache.commons.configuration.tree.ConfigurationNode;
 import org.apache.ibatis.jdbc.SQL;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFCell;
@@ -63,6 +59,7 @@ public class TIEFighter
 	
 	private static String confInputfolderpath = clInputFileFolder;
 	private static String confOutputfolderpath = clOutputFileFolder;
+	private static String confTempfolderpath = "temp";
 	private static String confDatabaseCacheSizeKb = "dbcachesizekb";
 	
 	
@@ -72,10 +69,10 @@ public class TIEFighter
 	
 	private static Options clOptions = new Options();
 	
-	private File settingConfigFile, settingInputFileFolder, settingOutputFileFolder, settingDBFolder, settingDocumentationTemplate;
+	private File settingConfigFile, settingInputFileFolder, settingOutputFileFolder, settingDBFolder, settingTempFolder, settingDocumentationTemplate;
 	private CustomFormatter.IOType settingInputFormat, settingOutputFormat;
 	private boolean settingReference, settingGene, settingOverwriteExistingTables, settingFirstRowVariableNames;
-	private int settingDBCacheSizeKB;
+	private Integer settingDBCacheSizeKB;
 	private DataCache dataCache;
 	private FilenameFilter filterExcelXlsx, filterCSV, filterTSV, filterJSON;
 	private DataCache.DataEntry referenceEntryTemplate, linkEntryTemplate;
@@ -153,13 +150,31 @@ public class TIEFighter
 
 	private void init() throws ConfigurationException, ApplicationException
 	{
-		XMLConfiguration config = new XMLConfiguration(settingConfigFile);
-		ConfigurationNode rootNode = config.getRootNode();
-		settingInputFileFolder = new File((String)((ConfigurationNode)rootNode.getChildren(confInputfolderpath).get(0)).getValue());
-		settingOutputFileFolder = new File((String)((ConfigurationNode)rootNode.getChildren(confOutputfolderpath).get(0)).getValue());
-		settingDBCacheSizeKB = Integer.parseInt((String)((ConfigurationNode)rootNode.getChildren(confDatabaseCacheSizeKb).get(0)).getValue());
+		if(settingConfigFile.exists())
+		{
+			System.out.println("Using file config from "+settingConfigFile);
+			XMLConfiguration config = new XMLConfiguration(settingConfigFile);
+			ConfigurationNode rootNode = config.getRootNode();
+			if(!rootNode.getChildren(confInputfolderpath).isEmpty())
+				settingInputFileFolder = new File((String)((ConfigurationNode)rootNode.getChildren(confInputfolderpath).get(0)).getValue()).getAbsoluteFile();
+			if(!rootNode.getChildren(confOutputfolderpath).isEmpty())
+				settingOutputFileFolder = new File((String)((ConfigurationNode)rootNode.getChildren(confOutputfolderpath).get(0)).getValue()).getAbsoluteFile();
+			if(!rootNode.getChildren(confTempfolderpath).isEmpty())
+				settingTempFolder = new File((String)((ConfigurationNode)rootNode.getChildren(confTempfolderpath).get(0)).getValue()).getAbsoluteFile();
+			if(!rootNode.getChildren(confDatabaseCacheSizeKb).isEmpty())
+				settingDBCacheSizeKB = Integer.parseInt((String)((ConfigurationNode)rootNode.getChildren(confDatabaseCacheSizeKb).get(0)).getValue());
+		}
+		
+		if(settingInputFileFolder==null)
+			settingInputFileFolder=new File("input").getAbsoluteFile();
+		if(settingOutputFileFolder==null)
+			settingOutputFileFolder=new File("output").getAbsoluteFile();
+		if(settingDBCacheSizeKB==null)
+			settingDBCacheSizeKB=2000000;
+		if(settingTempFolder==null)
+			settingTempFolder=settingOutputFileFolder;
 		//settingDBFolder = new File(Paths.get(".").toAbsolutePath().normalize().toString()); //not for older java
-		settingDBFolder = new File(".");
+		settingDBFolder = new File("");
 		
 		settingInputFormat=null;
 		settingOutputFormat=IOType.CSV;
@@ -244,6 +259,11 @@ public class TIEFighter
 		{
 			dataCache.setConnectionTimeoutMilliseconds(Long.parseLong(commandLine.getOptionValue(clTimeout)));
 		}
+		
+		//tempfiles - for poi
+		System.out.println("Tempfolder was: "+System.getProperty("java.io.tmpdir"));
+		System.setProperty("java.io.tmpdir", settingTempFolder.getAbsolutePath());
+		System.out.println("Tempfolder is now set to: "+System.getProperty("java.io.tmpdir"));
 		
 		
 		//formalized entry templates, names in UPPER CASE!!!!
@@ -792,8 +812,8 @@ public class TIEFighter
 			FileOutputStream fileOut = new FileOutputStream(settingOutputFileFolder);
 			outputFileWorkbook.write(fileOut);
 		    fileOut.close();
-			outputFileWorkbook.close();
-			documentationExcelWorkbook.close();
+			//outputFileWorkbook.close(); //unclear if we need to close these
+			//documentationExcelWorkbook.close();
 			System.out.println("Documentation import done. Continuing with outputting files...");
 		}
 		
