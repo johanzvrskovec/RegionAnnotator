@@ -446,7 +446,7 @@ public class TIEFighter
 	
 	public static void main(String[] args) throws Exception
 	{
-		System.out.println("***TIEFighter***");
+		System.out.println("//¤//TIEFighter//¤//");
 		new TIEFighter().setCommandLine(constructCommandLine(args)).runCommands();
 	}
 	
@@ -539,28 +539,46 @@ public class TIEFighter
 		{
 			
 			//import all files in input
-			File[] inputFilesJSON = settingInputFileFolder.listFiles(filterJSON);
-			for(int iFile=0; iFile<inputFilesJSON.length; iFile++)
+			if(settingInputFormat==null)
 			{
-				inputDataFromFile(inputFilesJSON[iFile], IOType.DATACACHE, inputReader, currentEntryTemplate);
+				File[] inputFilesJSON = settingInputFileFolder.listFiles(filterJSON);
+				for(int iFile=0; iFile<inputFilesJSON.length; iFile++)
+				{
+					inputDataFromFile(inputFilesJSON[iFile], IOType.DATACACHE, inputReader, currentEntryTemplate);
+				}
+				
+				File[] inputFilesCsv = settingInputFileFolder.listFiles(filterCSV);
+				for(int iFile=0; iFile<inputFilesCsv.length; iFile++)
+				{
+					inputDataFromFile(inputFilesCsv[iFile], IOType.CSV, inputReader, currentEntryTemplate);
+				}
+				
+				File[] inputFilesTsv = settingInputFileFolder.listFiles(filterTSV);
+				for(int iFile=0; iFile<inputFilesTsv.length; iFile++)
+				{
+					inputDataFromFile(inputFilesTsv[iFile], IOType.TSV, inputReader, currentEntryTemplate);
+				}
+				
+				File[] inputFilesXlsx = settingInputFileFolder.listFiles(filterExcelXlsx);
+				for(int iFile=0; iFile<inputFilesXlsx.length; iFile++)
+				{
+					inputDataFromFile(inputFilesXlsx[iFile], IOType.EXCEL, inputReader, currentEntryTemplate);
+				}
 			}
-			
-			File[] inputFilesCsv = settingInputFileFolder.listFiles(filterCSV);
-			for(int iFile=0; iFile<inputFilesCsv.length; iFile++)
+			else
 			{
-				inputDataFromFile(inputFilesCsv[iFile], IOType.CSV, inputReader, currentEntryTemplate);
-			}
-			
-			File[] inputFilesTsv = settingInputFileFolder.listFiles(filterTSV);
-			for(int iFile=0; iFile<inputFilesTsv.length; iFile++)
-			{
-				inputDataFromFile(inputFilesTsv[iFile], IOType.TSV, inputReader, currentEntryTemplate);
-			}
-			
-			File[] inputFilesXlsx = settingInputFileFolder.listFiles(filterExcelXlsx);
-			for(int iFile=0; iFile<inputFilesXlsx.length; iFile++)
-			{
-				inputDataFromFile(inputFilesXlsx[iFile], IOType.EXCEL, inputReader, currentEntryTemplate);
+				File[] inputFiles = settingInputFileFolder.listFiles();
+				for(int iFile=0; iFile<inputFiles.length; iFile++)
+				{
+					try 
+					{
+						inputDataFromFile(inputFiles[iFile], settingInputFormat, inputReader, currentEntryTemplate);
+					}
+					catch (Exception e)
+					{
+						System.err.println("Failed to parse file "+inputFiles[iFile].getAbsolutePath()+".\nReason:\n"+Utils.getStackTraceString(e));
+					}
+				}
 			}
 			
 		}
@@ -571,6 +589,8 @@ public class TIEFighter
 	
 	private void inputDataFromFile(File inputFile, IOType usedInputFormat, CustomFormatter inputReader, DataEntry currentEntryTemplate) throws InvalidFormatException, IOException, ApplicationException, SQLException
 	{
+		if(inputFile.isDirectory())
+			throw new ApplicationException("Can't input data from directory.");
 		
 		if(usedInputFormat==null)
 		{

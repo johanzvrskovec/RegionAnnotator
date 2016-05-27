@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.ki.meb.tiefighter</groupId>
   <artifactId>TIEFighter</artifactId>
-  <version>1.2.0</version>
+  <version>1.2.1</version>
   <name>TIEFighter</name>
   <description>org.ki.meb.tiefighter TIEFighter</description>
   <build>
@@ -116,7 +116,7 @@
 		<dependency>
 			<groupId>org.ki.meb.common</groupId>
 			<artifactId>meb.common</artifactId>
-			<version>1.7.0</version>
+			<version>1.7.1</version>
 		</dependency>
   </dependencies>
 </project>

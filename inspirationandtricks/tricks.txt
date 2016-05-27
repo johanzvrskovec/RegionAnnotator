@@ -1,0 +1,5 @@
+If csv-file is missing complete quotation marks in some rows:
+Find
+("[^"]+)\n
+Replace with
+$1"\n
