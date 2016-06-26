@@ -26,13 +26,13 @@ import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.json.JSONObject;
-import org.ki.meb.common.ApplicationException;
-import org.ki.meb.common.DataCache;
-import org.ki.meb.common.IndexedMap;
-import org.ki.meb.common.Utils;
-import org.ki.meb.common.DataCache.DataEntry;
-import org.ki.meb.common.formatter.CustomFormatter;
-import org.ki.meb.common.formatter.CustomFormatter.IOType;
+import org.jakz.common.ApplicationException;
+import org.jakz.common.DataCache;
+import org.jakz.common.IndexedMap;
+import org.jakz.common.Util;
+import org.jakz.common.DataCache.DataEntry;
+import org.jakz.common.formatter.CustomFormatter;
+import org.jakz.common.formatter.CustomFormatter.IOType;
 
 
 public class TIEFighter
@@ -576,7 +576,7 @@ public class TIEFighter
 					}
 					catch (Exception e)
 					{
-						System.err.println("Failed to parse file "+inputFiles[iFile].getAbsolutePath()+".\nReason:\n"+Utils.getStackTraceString(e));
+						System.err.println("Failed to parse file "+inputFiles[iFile].getAbsolutePath()+".\nReason:\n"+Util.getStackTraceString(e));
 					}
 				}
 			}
@@ -759,7 +759,7 @@ public class TIEFighter
 		}
 		
 		if(!settingOutputFileFolder.isDirectory())
-			Utils.deleteFileIfExistsOldCompatSafe(settingOutputFileFolder);
+			Util.deleteFileIfExistsOldCompatSafe(settingOutputFileFolder);
 		
 		
 		//append documentation/READ ME
