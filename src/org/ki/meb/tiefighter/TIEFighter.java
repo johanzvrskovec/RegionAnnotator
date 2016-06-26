@@ -839,7 +839,7 @@ public class TIEFighter
 		
 		//outputDataToFile("README",null,true, null, settingOutputFileFolder);
 		outputDataToFile("USER_INPUT",null,true, entryTemplate.getValue("USER_INPUT"), settingOutputFileFolder);
-		outputDataToFile("GENE_MASTER",null,true, linkEntryTemplate, settingOutputFileFolder);
+		outputDataToFile("GENES_PROTEIN_CODING_NEAR",null,true, linkEntryTemplate, settingOutputFileFolder);
 		outputDataToFile("gwas_catalog",null,true, linkEntryTemplate, settingOutputFileFolder);
 		outputDataToFile("omim",null,true, linkEntryTemplate, settingOutputFileFolder);
 		outputDataToFile("psychiatric_cnvs",null,true, linkEntryTemplate, settingOutputFileFolder);
@@ -1019,7 +1019,8 @@ public class TIEFighter
 				SELECT("g.genename AS genename_gm");
 				SELECT("( CASE WHEN ("+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp1","g.bp2")+") THEN 0 WHEN c.bp1 IS NULL OR c.bp2 IS NULL THEN 9e9 ELSE NUM_MAX_INTEGER(ABS(c.bp1-g.bp2),ABS(c.bp2-g.bp1)) END) dist");
 				FROM(schemaName+"._USER_INPUT c");
-				INNER_JOIN(schemaName+".GENE_MASTER_EXPANDED g ON (g.ttype='protein_coding' AND c.chr=g.chr AND ("+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp1s10m_gm","g.bp1")+" OR "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp2","g.bp2a10m_gm")+"))");
+				//INNER_JOIN(schemaName+".GENE_MASTER_EXPANDED g ON (g.ttype='protein_coding' AND c.chr=g.chr AND ("+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp1s10m_gm","g.bp1")+" OR "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp2","g.bp2a10m_gm")+"))");
+				INNER_JOIN(schemaName+".GENE_MASTER_EXPANDED g ON (g.ttype='protein_coding' AND c.chr=g.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp1s10m_gm","g.bp2a10m_gm")+")");
 				ORDER_BY("INPUTID,chr,bp1,bp2");
 			}
 		}.toString();
