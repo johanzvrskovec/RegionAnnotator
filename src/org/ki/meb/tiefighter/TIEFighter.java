@@ -169,12 +169,8 @@ public class TIEFighter
 			settingInputFileFolder=new File("input").getAbsoluteFile();
 		if(settingOutputFileFolder==null)
 			settingOutputFileFolder=new File("output").getAbsoluteFile();
-		if(settingDBCacheSizeKB==null)
-			settingDBCacheSizeKB=2000000;
 		if(settingTempFolder==null)
 			settingTempFolder=settingOutputFileFolder;
-		//settingDBFolder = new File(Paths.get(".").toAbsolutePath().normalize().toString()); //not for older java
-		settingDBFolder = new File("");
 		
 		settingInputFormat=null;
 		settingOutputFormat=IOType.CSV;
@@ -182,14 +178,6 @@ public class TIEFighter
 		settingGene=false;
 		settingFirstRowVariableNames=true;
 		
-		if(commandLine.hasOption(clDatabaseLocation))
-		{
-			settingDBFolder=new File(commandLine.getOptionValue(clDatabaseLocation));
-		}
-		
-		//dataCache=new DataCache("./TIEFighter");
-		String path = settingDBFolder.getAbsolutePath()+File.separator+"TIEFighter";
-		dataCache=new DataCache(path);
 		
 		settingDocumentationTemplate = new File("documentation.xlsx"); //default
 		if(commandLine.hasOption(clTemplate))
@@ -200,6 +188,16 @@ public class TIEFighter
 		if(commandLine.hasOption(clInputFileFolder))
 		{
 			settingInputFileFolder=new File(commandLine.getOptionValue(clInputFileFolder));
+			
+			//force output settings
+			if(settingInputFileFolder.isDirectory())
+				settingOutputFileFolder=settingInputFileFolder;
+			else
+			{
+				File newOutputFolder = settingInputFileFolder.getAbsoluteFile().getParentFile();
+				if(newOutputFolder!=null&&newOutputFolder.isDirectory())
+					settingOutputFileFolder=newOutputFolder;
+			}
 		}
 		
 		if(commandLine.hasOption(clOutputFileFolder))
@@ -234,6 +232,26 @@ public class TIEFighter
 			}
 		}
 		
+		
+		if(settingDBCacheSizeKB==null)
+			settingDBCacheSizeKB=2000000;
+		
+		//settingDBFolder = new File(Paths.get(".").toAbsolutePath().normalize().toString()); //not for older java
+		settingDBFolder = new File("");
+		
+		
+		
+		if(commandLine.hasOption(clDatabaseLocation))
+		{
+			settingDBFolder=new File(commandLine.getOptionValue(clDatabaseLocation));
+		}
+		
+		//dataCache=new DataCache("./TIEFighter");
+		String path = settingDBFolder.getAbsolutePath()+File.separator+"TIEFighter";
+		dataCache=new DataCache(path);
+		
+		
+		
 		if(commandLine.hasOption(clReference))
 		{
 			settingReference=true;
@@ -261,6 +279,17 @@ public class TIEFighter
 		}
 		
 		//tempfiles - for poi
+		//redirect temp to output
+		if(settingOutputFileFolder.isDirectory())
+			settingTempFolder=settingOutputFileFolder;
+		else
+		{
+			File newTempFolder = settingOutputFileFolder.getAbsoluteFile().getParentFile();
+			if(newTempFolder!=null&&newTempFolder.isDirectory())
+				settingTempFolder=newTempFolder;
+		}
+		//else fallback on standard config
+		
 		System.out.println("Tempfolder was: "+System.getProperty("java.io.tmpdir"));
 		System.setProperty("java.io.tmpdir", settingTempFolder.getAbsolutePath());
 		System.out.println("Tempfolder is now set to: "+System.getProperty("java.io.tmpdir"));
@@ -362,6 +391,10 @@ public class TIEFighter
 		element=new JSONObject();
 		element.put("type", java.sql.Types.VARCHAR);
 		ne.namemap.put("GENENAME",element);
+		
+		element=new JSONObject();
+		element.put("type", java.sql.Types.INTEGER);
+		ne.namemap.put("ENTREZ",element);
 		
 		entryTemplate.put("GENE_MASTER", ne);
 		
@@ -1016,7 +1049,7 @@ public class TIEFighter
 		{
 			{
 				SELECT("c.*");
-				SELECT("g.genename AS genename_gm");
+				SELECT("g.genename AS genename_gm, g.entrez");
 				SELECT("( CASE WHEN ("+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp1","g.bp2")+") THEN 0 WHEN c.bp1 IS NULL OR c.bp2 IS NULL THEN 9e9 ELSE NUM_MAX_INTEGER(ABS(c.bp1-g.bp2),ABS(c.bp2-g.bp1)) END) dist");
 				FROM(schemaName+"._USER_INPUT c");
 				//INNER_JOIN(schemaName+".GENE_MASTER_EXPANDED g ON (g.ttype='protein_coding' AND c.chr=g.chr AND ("+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp1s10m_gm","g.bp1")+" OR "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp2","g.bp2a10m_gm")+"))");
@@ -1031,6 +1064,7 @@ public class TIEFighter
 		dataCache.index("GENES_PROTEIN_CODING", "bp2");
 		dataCache.index("GENES_PROTEIN_CODING", "pvalue");
 		dataCache.index("GENES_PROTEIN_CODING", "genename_gm");
+		dataCache.index("GENES_PROTEIN_CODING", "entrez");
 		
 		printTimeMeasure();
 		System.out.println("GENES_PROTEIN_CODING"); //genesPC10m

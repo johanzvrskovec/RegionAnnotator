@@ -2,9 +2,15 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.ki.meb.tiefighter</groupId>
   <artifactId>TIEFighter</artifactId>
-  <version>1.3.0</version>
+  <version>1.4.0</version>
   <name>TIEFighter</name>
-  <description>org.ki.meb.tiefighter TIEFighter</description>
+  <description>org.ki.meb.tiefighter TIEFighter
+
+PGC bioinformatics, PF Sullivan &amp; JA Källberg Zvrskovec, Karolinska Institutet, (c) 2016
+  </description>
+  <properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
   <build>
     <sourceDirectory>src</sourceDirectory>
     <plugins>
