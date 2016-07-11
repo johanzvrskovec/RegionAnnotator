@@ -3,7 +3,7 @@
 ##Algorithm
 
 ### Enter reference data, gene data or user data input
-1. The input data is read from it source format.
+1. The input data is read from its source format.
 2. The input data is checked against its pre-configured templates and is configured and completed from the templates. Templates contain information on table columns, column data types and output formatting.
 3. The input data rows are read into tables. Reference data is read into tables that are named corresponding to their file names or excel-sheets, prefixed by `_`. Gene data is read into a table named GENE\_MASTER. User data is read into a table named \_USER\_INPUT.
 4. Templated columns are indexed for improved database performance.
@@ -14,10 +14,12 @@ The program runs operation actions after every user input.
 - TwoSegmentOverlapcondition(a0,a1,b0,b1) = ``"((a0<=b0 AND b0<=a1) OR (a0<=b1 AND b1<=a1) OR (b0<=a0 AND a0<=b1) OR (b0<=a1 AND a1<=b1))``
 
 1. Computes an enriched version of the user input in the table USER\_INPUT.
+
 - location	A coordinate composed of the chromosome (chr) and the basepair coordinates (bp1, bp2) that has been formatted into a string. A comma is used as a 3-character separator in the basepari coordinates.
 - UCSC\_LINK	A (MS Excel) hyperlink to UCSC Genome Browser on Human Feb. 2009 (GRCh37/hg19) Assembly.
 
 2. Computes an enriched version of the GENE\_MASTER (g) table in GENE\_MASTER\_EXPANDED. Expanded basepair coordinates are calculated, one expanding 20kbases, and one 10Mbases.
+
 - bp1s20k_gm = ``(g.bp1-20000)``
 - bp2a20k_gm = ``(g.bp2+20000)``
 - bp1s10m_gm = ``(g.bp1-10e6)``
@@ -26,6 +28,7 @@ The program runs operation actions after every user input.
 3. Creates a joined table GENES\_PROTEIN\_CODING of user input and protein coding genes from \_USER\_INPUT (c) and GENE\_MASTER\_EXPANDED (g) fulfilling the condition of
 	``g.ttype='protein\_coding' AND c.chr=g.chr AND TwoSegmentOverlapCondition(c.bp1,c.bp2,g.bp1s10m\_gm,g.bp2a10m\_gm)``
 , that is: protein coding genes that fulfill the overlap condition, between user input regions and gene coordinates that were expanded 10MBases.
+
 - dist= ``CASE WHEN TwoSegmentOverlapCondition(c.bp1,c.bp2,g.bp1,g.bp2) THEN 0 WHEN c.bp1 IS NULL OR c.bp2 IS NULL THEN 9e9 ELSE NUM_MAX_INTEGER(ABS(c.bp1-g.bp2),ABS(c.bp2-g.bp1)) END)``
 
 4. Creates a view GENES\_PROTEIN\_CODING\_NEAR from GENES\_PROTEIN\_CODING
