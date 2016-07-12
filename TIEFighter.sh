@@ -1,2 +1,2 @@
-cd /home/kallberg/program/TIEFighter
+cd /home/pgcbioif/basicAnnotation
 java -jar "TIEFighter.jar" $*

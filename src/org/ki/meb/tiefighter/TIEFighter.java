@@ -173,7 +173,7 @@ public class TIEFighter
 			settingTempFolder=settingOutputFileFolder;
 		
 		settingInputFormat=null;
-		settingOutputFormat=IOType.CSV;
+		settingOutputFormat=IOType.EXCEL;
 		settingReference=false;
 		settingGene=false;
 		settingFirstRowVariableNames=true;
@@ -699,7 +699,7 @@ public class TIEFighter
 			outputDataToFile(commandLine.getOptionValue(TextMap.get),null,false,entryTemplate.getValue(commandLine.getOptionValue(TextMap.get)),null);
 			System.out.println("Outputted file done");
 		}
-		else if(commandLine.hasOption(clOutputFileFolder)||commandLine.hasOption(clOutputFormat))
+		else if(commandLine.hasOption(clOutputFileFolder)||commandLine.hasOption(clOutputFormat)||commandLine.hasOption(clInputFileFolder))
 		{
 			//Outputting result data
 			System.out.println("Outputting to file...");
