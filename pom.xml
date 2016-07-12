@@ -43,6 +43,7 @@ PGC bioinformatics, PF Sullivan &amp; JA Källberg Zvrskovec, Karolinska Institu
           						<include>*.sh</include>
           						<include>*.txt</include>
           						<include>*.xlsx</include>
+          						<include>*.md</include>
           					</includes>
 							<filtering>false</filtering>
 						</resource>
