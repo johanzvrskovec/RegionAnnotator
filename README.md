@@ -11,11 +11,11 @@
 ### Operate
 The program runs operation actions after every user input.
 
-- TwoSegmentOverlapcondition(a0,a1,b0,b1) = ``"((a0<=b0 AND b0<=a1) OR (a0<=b1 AND b1<=a1) OR (b0<=a0 AND a0<=b1) OR (b0<=a1 AND a1<=b1))``
+- TwoSegmentOverlapcondition(a0,a1,b0,b1) = ``((a0<=b0 AND b0<=a1) OR (a0<=b1 AND b1<=a1) OR (b0<=a0 AND a0<=b1) OR (b0<=a1 AND a1<=b1))``
 
 1. Computes an enriched version of the user input in the table USER\_INPUT.
-  - location	A coordinate composed of the chromosome (chr) and the basepair coordinates (bp1, bp2) that has been formatted into a string. A comma is used as a 3-character separator in the basepari coordinates.
-  - UCSC\_LINK	A (MS Excel) hyperlink to UCSC Genome Browser on Human Feb. 2009 (GRCh37/hg19) Assembly.
+  - location : A coordinate composed of the chromosome (chr) and the basepair coordinates (bp1, bp2) that has been formatted into a string. A comma is used as a 3-character separator in the basepari coordinates.
+  - UCSC\_LINK : A (MS Excel) hyperlink to UCSC Genome Browser on Human Feb. 2009 (GRCh37/hg19) Assembly.
 2. Computes an enriched version of the GENE\_MASTER (g) table in GENE\_MASTER\_EXPANDED. Expanded basepair coordinates are calculated, one expanding 20kbases, and one 10Mbases.
   - bp1s20k_gm = ``(g.bp1-20000)``
   - bp2a20k_gm = ``(g.bp2+20000)``
