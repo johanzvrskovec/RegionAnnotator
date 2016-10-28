@@ -3,8 +3,7 @@
 	<name>TIEFighter</name>
 	<comment></comment>
 	<projects>
-		<project>MEB Common</project>
-		<project>org.json</project>
+		<project>org.jakz.common</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

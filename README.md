@@ -1,4 +1,13 @@
-# TIEFighter
+#TIEFighter
+
+##Data input needed
+Daner clumps or similar generated from PGC GWAS Summary Statistics
+
+##What the program does
+Creates a number of tables with gene entries (rows) and psychiatric related annotations (columns). Includes gencode location, gene-based p-values, SFARI ASD annotation, GENCODE annotation, GWAS catalog annotation, OMIM annotation and manual curation among other things. Genes/regions are annotated based on an expanded (10 Mbases) segment overlap condition or a gene name comparison condition.
+
+##What the data output will look like
+Multiple .csv/.tsv-files or one MS excel-file or one json-file. Creates a Java H2 database file that can be accessed directly instead of file export.
 
 ##Algorithm
 
@@ -16,13 +25,13 @@ The program runs operation actions after every user input.
 1. Computes an enriched version of the user input in the table USER\_INPUT.
   - location : A coordinate composed of the chromosome (chr) and the basepair coordinates (bp1, bp2) that has been formatted into a string. A comma is used as a 3-character separator in the basepari coordinates.
   - UCSC\_LINK : A (MS Excel) hyperlink to UCSC Genome Browser on Human Feb. 2009 (GRCh37/hg19) Assembly.
-2. Computes an enriched version of the GENE\_MASTER (g) table in GENE\_MASTER\_EXPANDED. Expanded basepair coordinates are calculated, one expanding 20kbases, and one 10Mbases.
+2. Computes an enriched version of the GENE\_MASTER (g) table in GENE\_MASTER\_EXPANDED. Expanded basepair coordinates are calculated, one expanding 20 kbases, and one 10 Mbases.
   - bp1s20k_gm = ``(g.bp1-20000)``
   - bp2a20k_gm = ``(g.bp2+20000)``
   - bp1s10m_gm = ``(g.bp1-10e6)``
   - bp2a10m_gm = ``(g.bp2+10e6)``
 3. Creates a joined table GENES\_PROTEIN\_CODING of user input and protein coding genes from \_USER\_INPUT (c) and GENE\_MASTER\_EXPANDED (g) fulfilling the condition of
-	``g.ttype='protein\_coding' AND c.chr=g.chr AND TwoSegmentOverlapCondition(c.bp1,c.bp2,g.bp1s10m\_gm,g.bp2a10m\_gm)``
+	``g.ttype='protein\_coding' AND c.chr=g.chr AND TwoSegmentOverlapCondition(c.bp1,c.bp2,g.bp1s10m_gm,g.bp2a10m_gm)``
 , that is: protein coding genes that fulfill the overlap condition, between user input regions and gene coordinates that were expanded 10MBases.
   - dist= ``CASE WHEN TwoSegmentOverlapCondition(c.bp1,c.bp2,g.bp1,g.bp2) THEN 0 WHEN c.bp1 IS NULL OR c.bp2 IS NULL THEN 9e9 ELSE NUM_MAX_INTEGER(ABS(c.bp1-g.bp2),ABS(c.bp2-g.bp1)) END)``
 4. Creates a view GENES\_PROTEIN\_CODING\_NEAR from GENES\_PROTEIN\_CODING
