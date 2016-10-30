@@ -1,4 +1,4 @@
 @REM java -jar "TIEFighter.jar" -help
-@REM java -jar "TIEFighter.jar" -input ".\input" -reference
-@REM java -jar "TIEFighter.jar" -input "input\gencode.genes.tsv" -gene
-java -jar "TIEFighter.jar" -input "input\test.txt" -iformat tsv -oformat EXCEL -timeout 60000
+@REM java -jar "TIEFighter.jar" -input ".\inputReference" -reference -iformat TSV
+@REM java -jar "TIEFighter.jar" -input "inputGene\gencode.genes.txt" -gene -iformat TSV
+java -jar "TIEFighter.jar" -input "input\pgcscz3.txt" -iformat tsv -oformat EXCEL -timeout 60000

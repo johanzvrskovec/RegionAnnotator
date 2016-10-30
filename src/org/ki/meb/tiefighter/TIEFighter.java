@@ -511,16 +511,9 @@ public class TIEFighter
 		dataCache.setDBCacheSizeKB(settingDBCacheSizeKB);
 		dataCache.commit();
 		
-		//if((!commandLine.hasOption(TextMap.operate)&&!settingReference&&!settingGene)||Boolean.parseBoolean(commandLine.getOptionValue(TextMap.operate))==true)
-		if(commandLine.hasOption(clInputFileFolder))
-		{
-			inputDataFromFiles();
-			if(!settingGene&&!settingReference)
-				operate();
-		}
 		
-		
-		
+		inputDataFromFiles();
+		operate();
 		outputDataToFiles();
 		
 		dataCache.shutdownCacheConnection();
@@ -549,6 +542,9 @@ public class TIEFighter
 	
 	private void inputDataFromFiles() throws ApplicationException, Exception
 	{
+		
+		if(!commandLine.hasOption(clInputFileFolder))
+			return;
 			
 		CustomFormatter inputReader = new CustomFormatter().setDataCache(dataCache).setOverwriteExistingTables(settingOverwriteExistingTables).setFirstRowVariableNames(settingFirstRowVariableNames);
 		
@@ -699,7 +695,7 @@ public class TIEFighter
 			outputDataToFile(commandLine.getOptionValue(TextMap.get),null,false,entryTemplate.getValue(commandLine.getOptionValue(TextMap.get)),null);
 			System.out.println("Outputted file done");
 		}
-		else if(commandLine.hasOption(clOutputFileFolder)||commandLine.hasOption(clOutputFormat)||commandLine.hasOption(clInputFileFolder))
+		else if((!settingGene&&!settingReference) && (commandLine.hasOption(clOutputFileFolder)||commandLine.hasOption(clOutputFormat)||commandLine.hasOption(clInputFileFolder)))
 		{
 			//Outputting result data
 			System.out.println("Outputting to file...");
@@ -905,6 +901,12 @@ public class TIEFighter
 	
 	private void operate() throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException, ApplicationException, IOException
 	{
+		if(settingGene||settingReference)
+			return;
+		
+		if(!commandLine.hasOption(clInputFileFolder))
+			return;
+		
 		printTimeMeasure();
 		System.out.println("Operating...");
 		long operationStartTimeNanos = System.nanoTime();
