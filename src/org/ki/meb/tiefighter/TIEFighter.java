@@ -38,7 +38,7 @@ import org.jakz.common.formatter.CustomFormatter.IOType;
 public class TIEFighter
 {
 	
-	
+	public static final String version = "1.5.0";
 	
 	private static String clHelp = TextMap.help;
 	private static String clInputFileFolder = TextMap.input;
@@ -396,6 +396,22 @@ public class TIEFighter
 		element.put("type", java.sql.Types.INTEGER);
 		ne.namemap.put("ENTREZ",element);
 		
+		element=new JSONObject();
+		element.put("type", java.sql.Types.VARCHAR);
+		ne.namemap.put("ENSEMBL",element);
+		
+		element=new JSONObject();
+		element.put("type", java.sql.Types.VARCHAR);
+		ne.namemap.put("TTYPE",element);
+		
+		element=new JSONObject();
+		element.put("type", java.sql.Types.VARCHAR);
+		ne.namemap.put("STRAND",element);
+		
+		element=new JSONObject();
+		element.put("type", java.sql.Types.VARCHAR);
+		ne.namemap.put("PRODUCT",element);
+		
 		entryTemplate.put("GENE_MASTER", ne);
 		
 		
@@ -479,7 +495,7 @@ public class TIEFighter
 	
 	public static void main(String[] args) throws Exception
 	{
-		System.out.println("//¤//TIEFighter//¤//");
+		System.out.println("//¤//TIEFighter//¤//		version "+version);
 		new TIEFighter().setCommandLine(constructCommandLine(args)).runCommands();
 	}
 	
@@ -1051,7 +1067,7 @@ public class TIEFighter
 		{
 			{
 				SELECT("c.*");
-				SELECT("g.genename AS genename_gm, g.entrez");
+				SELECT("g.chr AS chr_gm, g.bp1 AS bp1_gm, g.bp2 AS bp2_gm, g.genename AS genename_gm, g.entrez AS entrez_gm, g.ensembl AS ensembl_gm, g.ttype AS ttype_gm, g.strand AS strand_gm, g.product AS product_gm");
 				SELECT("( CASE WHEN ("+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp1","g.bp2")+") THEN 0 WHEN c.bp1 IS NULL OR c.bp2 IS NULL THEN 9e9 ELSE NUM_MAX_INTEGER(ABS(c.bp1-g.bp2),ABS(c.bp2-g.bp1)) END) dist");
 				FROM(schemaName+"._USER_INPUT c");
 				//INNER_JOIN(schemaName+".GENE_MASTER_EXPANDED g ON (g.ttype='protein_coding' AND c.chr=g.chr AND ("+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp1s10m_gm","g.bp1")+" OR "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp2","g.bp2a10m_gm")+"))");
@@ -1065,8 +1081,15 @@ public class TIEFighter
 		dataCache.index("GENES_PROTEIN_CODING", "bp1");
 		dataCache.index("GENES_PROTEIN_CODING", "bp2");
 		dataCache.index("GENES_PROTEIN_CODING", "pvalue");
+		dataCache.index("GENES_PROTEIN_CODING", "chr_gm");
+		dataCache.index("GENES_PROTEIN_CODING", "bp1_gm");
+		dataCache.index("GENES_PROTEIN_CODING", "bp2_gm");
 		dataCache.index("GENES_PROTEIN_CODING", "genename_gm");
-		dataCache.index("GENES_PROTEIN_CODING", "entrez");
+		dataCache.index("GENES_PROTEIN_CODING", "entrez_gm");
+		dataCache.index("GENES_PROTEIN_CODING", "ensembl_gm");
+		dataCache.index("GENES_PROTEIN_CODING", "ttype_gm");
+		dataCache.index("GENES_PROTEIN_CODING", "strand_gm");
+		//dataCache.index("GENES_PROTEIN_CODING", "product_gm");
 		
 		printTimeMeasure();
 		System.out.println("GENES_PROTEIN_CODING"); //genesPC10m
@@ -1099,7 +1122,7 @@ public class TIEFighter
 		q=new SQL()
 		{
 			{
-				SELECT("c.*, r.bp1 AS bp1_gwc, r.bp2 AS bp2_gwc, r.snpid AS snpid_gwc, r.pvalue AS pvalue_gwc, r.pmid, r.trait");
+				SELECT("c.*, r.bp1 AS bp1_r, r.bp2 AS bp2_r, r.snpid AS snpid_r, r.pvalue AS pvalue_r, r.pmid AS pmid_r, r.trait AS trait_r");
 				FROM(schemaName+"._USER_INPUT c");
 				INNER_JOIN(schemaName+"._gwas_catalog r ON c.chr=r.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1", "c.bp2", "r.bp1", "r.bp2"));
 				ORDER_BY("INPUTID,c.chr,c.bp1,c.bp2");
@@ -1115,7 +1138,7 @@ public class TIEFighter
 		q=new SQL()
 		{
 			{
-				SELECT("g.*, r.OMIMgene, r.OMIMDisease, r.type");
+				SELECT("g.*, r.OMIMgene AS omimgene_r, r.OMIMDisease AS omimdisease_r, r.type AS type_r");
 				FROM(schemaName+".GENES_PROTEIN_CODING_NEAR g");
 				INNER_JOIN(schemaName+"._omim r ON g.genename_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
 				ORDER_BY("INPUTID,chr,bp1,bp2");
@@ -1130,7 +1153,7 @@ public class TIEFighter
 		q=new SQL()
 		{
 			{
-				SELECT("c.*, r.disease, r.type, r.note");
+				SELECT("c.*, r.chr AS chr_r, r.bp1 AS bp1_r, r.bp2 AS bp2_r, r.disease AS disease_r, r.type AS type_r, r.note AS note_r");
 				FROM(schemaName+"._USER_INPUT c");
 				INNER_JOIN(schemaName+"._psychiatric_cnvs r ON c.chr=r.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1", "c.bp2", "r.bp1", "r.bp2"));
 				ORDER_BY("INPUTID,c.chr,c.bp1,c.bp2");
@@ -1146,7 +1169,7 @@ public class TIEFighter
 		q=new SQL()
 		{
 			{
-				SELECT("g.*, r.type");
+				SELECT("g.*, r.type AS type_r");
 				FROM(schemaName+".GENES_PROTEIN_CODING_NEAR g");
 				INNER_JOIN(schemaName+"._asd_genes r ON g.genename_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
 				ORDER_BY("INPUTID,chr,bp1,bp2");
@@ -1162,7 +1185,7 @@ public class TIEFighter
 		q=new SQL()
 		{
 			{
-				SELECT("g.*");
+				SELECT("g.*, r.chr AS chr_r, r.bp1 AS bp1_r, r.bp2 AS bp2_r, r.genename AS genename_r, r.type AS type_r");
 				FROM(schemaName+".GENES_PROTEIN_CODING_NEAR g");
 				INNER_JOIN(schemaName+"._id_devdelay_genes r ON g.geneName_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
 				ORDER_BY("INPUTID,chr,bp1,bp2");
@@ -1178,7 +1201,7 @@ public class TIEFighter
 		q=new SQL()
 		{
 			{
-				SELECT("g.*, r.musName, r.phenotype");
+				SELECT("g.*, r.musName AS musname_r, r.phenotype AS phenotype_r");
 				FROM(schemaName+".GENES_PROTEIN_CODING_NEAR g");
 				INNER_JOIN(schemaName+"._mouse_knockout r ON g.geneName_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
 				ORDER_BY("INPUTID,chr,bp1,bp2");

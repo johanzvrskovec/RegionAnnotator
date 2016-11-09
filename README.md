@@ -31,7 +31,7 @@ The program runs operation actions after every user input.
   - bp1s10m_gm = ``(g.bp1-10e6)``
   - bp2a10m_gm = ``(g.bp2+10e6)``
 3. Creates a joined table GENES\_PROTEIN\_CODING of user input and protein coding genes from \_USER\_INPUT (c) and GENE\_MASTER\_EXPANDED (g) fulfilling the condition of
-	``g.ttype='protein\_coding' AND c.chr=g.chr AND TwoSegmentOverlapCondition(c.bp1,c.bp2,g.bp1s10m_gm,g.bp2a10m_gm)``
+	``g.ttype='protein_coding' AND c.chr=g.chr AND TwoSegmentOverlapCondition(c.bp1,c.bp2,g.bp1s10m_gm,g.bp2a10m_gm)``
 , that is: protein coding genes that fulfill the overlap condition, between user input regions and gene coordinates that were expanded 10MBases.
   - dist= ``CASE WHEN TwoSegmentOverlapCondition(c.bp1,c.bp2,g.bp1,g.bp2) THEN 0 WHEN c.bp1 IS NULL OR c.bp2 IS NULL THEN 9e9 ELSE NUM_MAX_INTEGER(ABS(c.bp1-g.bp2),ABS(c.bp2-g.bp1)) END)``
 4. Creates a view GENES\_PROTEIN\_CODING\_NEAR from GENES\_PROTEIN\_CODING
