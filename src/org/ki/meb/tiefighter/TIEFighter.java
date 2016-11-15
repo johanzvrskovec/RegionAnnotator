@@ -1067,7 +1067,8 @@ public class TIEFighter
 		{
 			{
 				SELECT("c.*");
-				SELECT("g.chr AS chr_gm, g.bp1 AS bp1_gm, g.bp2 AS bp2_gm, g.genename AS genename_gm, g.entrez AS entrez_gm, g.ensembl AS ensembl_gm, g.ttype AS ttype_gm, g.strand AS strand_gm, g.product AS product_gm");
+				//SELECT("g.chr AS chr_gm");
+				SELECT("g.bp1 AS bp1_gm, g.bp2 AS bp2_gm, g.genename AS genename_gm, g.entrez AS entrez_gm, g.ensembl AS ensembl_gm, g.ttype AS ttype_gm, g.strand AS strand_gm, g.product AS product_gm");
 				SELECT("( CASE WHEN ("+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp1","g.bp2")+") THEN 0 WHEN c.bp1 IS NULL OR c.bp2 IS NULL THEN 9e9 ELSE NUM_MAX_INTEGER(ABS(c.bp1-g.bp2),ABS(c.bp2-g.bp1)) END) dist");
 				FROM(schemaName+"._USER_INPUT c");
 				//INNER_JOIN(schemaName+".GENE_MASTER_EXPANDED g ON (g.ttype='protein_coding' AND c.chr=g.chr AND ("+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp1s10m_gm","g.bp1")+" OR "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1","c.bp2","g.bp2","g.bp2a10m_gm")+"))");
