@@ -38,7 +38,7 @@ import org.jakz.common.formatter.CustomFormatter.IOType;
 public class TIEFighter
 {
 	
-	public static final String version = "1.5.0";
+	public static final String version = "1.5.1";
 	
 	private static String clHelp = TextMap.help;
 	private static String clInputFileFolder = TextMap.input;
@@ -883,8 +883,8 @@ public class TIEFighter
 		}
 		
 		//outputDataToFile("README",null,true, null, settingOutputFileFolder);
-		outputDataToFile("USER_INPUT",null,true, entryTemplate.getValue("USER_INPUT"), settingOutputFileFolder);
-		outputDataToFile("GENES_PROTEIN_CODING_NEAR",null,true, linkEntryTemplate, settingOutputFileFolder);
+		outputDataToFile("user_input",null,true, entryTemplate.getValue("USER_INPUT"), settingOutputFileFolder);
+		outputDataToFile("protein_coding_genes",null,true, linkEntryTemplate, settingOutputFileFolder);
 		outputDataToFile("gwas_catalog",null,true, linkEntryTemplate, settingOutputFileFolder);
 		outputDataToFile("omim",null,true, linkEntryTemplate, settingOutputFileFolder);
 		outputDataToFile("psychiatric_cnvs",null,true, linkEntryTemplate, settingOutputFileFolder);
@@ -1075,24 +1075,24 @@ public class TIEFighter
 				ORDER_BY("INPUTID,chr,bp1,bp2");
 			}
 		}.toString();
-		dataCache.table("GENES_PROTEIN_CODING", q).commit();
-		dataCache.index("GENES_PROTEIN_CODING", "INPUTID");
-		dataCache.index("GENES_PROTEIN_CODING", "chr");
-		dataCache.index("GENES_PROTEIN_CODING", "bp1");
-		dataCache.index("GENES_PROTEIN_CODING", "bp2");
-		dataCache.index("GENES_PROTEIN_CODING", "pvalue");
-		dataCache.index("GENES_PROTEIN_CODING", "chr_gm");
-		dataCache.index("GENES_PROTEIN_CODING", "bp1_gm");
-		dataCache.index("GENES_PROTEIN_CODING", "bp2_gm");
-		dataCache.index("GENES_PROTEIN_CODING", "genename_gm");
-		dataCache.index("GENES_PROTEIN_CODING", "entrez_gm");
-		dataCache.index("GENES_PROTEIN_CODING", "ensembl_gm");
-		dataCache.index("GENES_PROTEIN_CODING", "ttype_gm");
-		dataCache.index("GENES_PROTEIN_CODING", "strand_gm");
-		//dataCache.index("GENES_PROTEIN_CODING", "product_gm");
+		dataCache.table("PROTEIN_CODING_GENES_ALL", q).commit(); //earlier GENES_PROTEIN_CODING
+		dataCache.index("PROTEIN_CODING_GENES_ALL", "INPUTID");
+		dataCache.index("PROTEIN_CODING_GENES_ALL", "chr");
+		dataCache.index("PROTEIN_CODING_GENES_ALL", "bp1");
+		dataCache.index("PROTEIN_CODING_GENES_ALL", "bp2");
+		dataCache.index("PROTEIN_CODING_GENES_ALL", "pvalue");
+		dataCache.index("PROTEIN_CODING_GENES_ALL", "chr_gm");
+		dataCache.index("PROTEIN_CODING_GENES_ALL", "bp1_gm");
+		dataCache.index("PROTEIN_CODING_GENES_ALL", "bp2_gm");
+		dataCache.index("PROTEIN_CODING_GENES_ALL", "genename_gm");
+		dataCache.index("PROTEIN_CODING_GENES_ALL", "entrez_gm");
+		dataCache.index("PROTEIN_CODING_GENES_ALL", "ensembl_gm");
+		dataCache.index("PROTEIN_CODING_GENES_ALL", "ttype_gm");
+		dataCache.index("PROTEIN_CODING_GENES_ALL", "strand_gm");
+		//dataCache.index("PROTEIN_CODING_GENES_ALL", "product_gm");
 		
 		printTimeMeasure();
-		System.out.println("GENES_PROTEIN_CODING"); //genesPC10m
+		System.out.println("PROTEIN_CODING_GENES_ALL"); //genesPC10m
 		
 		//*====== PC genes near======;
 		
@@ -1100,15 +1100,15 @@ public class TIEFighter
 		{
 			{
 				SELECT("g.*");
-				FROM(schemaName+".GENES_PROTEIN_CODING g");
+				FROM(schemaName+".PROTEIN_CODING_GENES_ALL g");
 				WHERE("dist<100000");
 				ORDER_BY("INPUTID,chr,bp1,bp2");
 			}
 		}.toString();
-		dataCache.view("GENES_PROTEIN_CODING_NEAR", q).commit(); //genesPCnear
+		dataCache.view("PROTEIN_CODING_GENES", q).commit(); //genesPCnear
 		
 		printTimeMeasure();
-		System.out.println("GENES_PROTEIN_CODING_NEAR");
+		System.out.println("PROTEIN_CODING_GENES");
 		
 		
 		
@@ -1139,7 +1139,7 @@ public class TIEFighter
 		{
 			{
 				SELECT("g.*, r.OMIMgene AS omimgene_r, r.OMIMDisease AS omimdisease_r, r.type AS type_r");
-				FROM(schemaName+".GENES_PROTEIN_CODING_NEAR g");
+				FROM(schemaName+".PROTEIN_CODING_GENES g");
 				INNER_JOIN(schemaName+"._omim r ON g.genename_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
 				ORDER_BY("INPUTID,chr,bp1,bp2");
 			}
@@ -1170,7 +1170,7 @@ public class TIEFighter
 		{
 			{
 				SELECT("g.*, r.type AS type_r");
-				FROM(schemaName+".GENES_PROTEIN_CODING_NEAR g");
+				FROM(schemaName+".PROTEIN_CODING_GENES g");
 				INNER_JOIN(schemaName+"._asd_genes r ON g.genename_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
 				ORDER_BY("INPUTID,chr,bp1,bp2");
 			}
@@ -1186,7 +1186,7 @@ public class TIEFighter
 		{
 			{
 				SELECT("g.*, r.chr AS chr_r, r.bp1 AS bp1_r, r.bp2 AS bp2_r, r.genename AS genename_r, r.type AS type_r");
-				FROM(schemaName+".GENES_PROTEIN_CODING_NEAR g");
+				FROM(schemaName+".PROTEIN_CODING_GENES g");
 				INNER_JOIN(schemaName+"._id_devdelay_genes r ON g.geneName_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
 				ORDER_BY("INPUTID,chr,bp1,bp2");
 			}
@@ -1202,7 +1202,7 @@ public class TIEFighter
 		{
 			{
 				SELECT("g.*, r.musName AS musname_r, r.phenotype AS phenotype_r");
-				FROM(schemaName+".GENES_PROTEIN_CODING_NEAR g");
+				FROM(schemaName+".PROTEIN_CODING_GENES g");
 				INNER_JOIN(schemaName+"._mouse_knockout r ON g.geneName_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
 				ORDER_BY("INPUTID,chr,bp1,bp2");
 			}
