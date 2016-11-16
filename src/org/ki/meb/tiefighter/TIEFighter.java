@@ -30,7 +30,7 @@ import org.jakz.common.ApplicationException;
 import org.jakz.common.DataCache;
 import org.jakz.common.IndexedMap;
 import org.jakz.common.Util;
-import org.jakz.common.DataCache.DataEntry;
+import org.jakz.common.DataEntry;
 import org.jakz.common.formatter.CustomFormatter;
 import org.jakz.common.formatter.CustomFormatter.IOType;
 
@@ -75,8 +75,8 @@ public class TIEFighter
 	private Integer settingDBCacheSizeKB;
 	private DataCache dataCache;
 	private FilenameFilter filterExcelXlsx, filterCSV, filterTSV, filterJSON;
-	private DataCache.DataEntry referenceEntryTemplate, linkEntryTemplate;
-	private IndexedMap<String, DataCache.DataEntry> entryTemplate;
+	private DataEntry referenceEntryTemplate, linkEntryTemplate, reducedLinkEntryTemplate;
+	private IndexedMap<String, DataEntry> entryTemplate;
 	private IndexedMap<String,XSSFCellStyle> excelStyle;
 	
 	static
@@ -297,7 +297,7 @@ public class TIEFighter
 		
 		//formalized entry templates, names in UPPER CASE!!!!
 		DataEntry ne; JSONObject element;
-		entryTemplate=new IndexedMap<String, DataCache.DataEntry>();
+		entryTemplate=new IndexedMap<String, DataEntry>();
 				
 		ne=dataCache.newEntry("_USER_INPUT"); //WORK
 		ne.local=true;
@@ -473,6 +473,31 @@ public class TIEFighter
 		ne.namemap.put("UCSC_LINK",element);
 		
 		linkEntryTemplate=ne;
+		
+		
+		ne=linkEntryTemplate.copy();		//reduced link data
+		
+		element=new JSONObject();
+		element.put("type", java.sql.Types.INTEGER);
+		element.put("hide", true);
+		ne.namemap.put("ENTREZ_GM",element);
+		
+		element=new JSONObject();
+		element.put("type", java.sql.Types.VARCHAR);
+		element.put("hide", true);
+		ne.namemap.put("ENSEMBL_GM",element);
+		
+		element=new JSONObject();
+		element.put("type", java.sql.Types.VARCHAR);
+		element.put("hide", true);
+		ne.namemap.put("TTYPE_GM",element);
+		
+		element=new JSONObject();
+		element.put("type", java.sql.Types.VARCHAR);
+		element.put("hide", true);
+		ne.namemap.put("STRAND_GM",element);
+		
+		reducedLinkEntryTemplate = ne;
 		
 		excelStyle = new IndexedMap<String, XSSFCellStyle>();
 	}
@@ -886,10 +911,10 @@ public class TIEFighter
 		outputDataToFile("user_input",null,true, entryTemplate.getValue("USER_INPUT"), settingOutputFileFolder);
 		outputDataToFile("protein_coding_genes",null,true, linkEntryTemplate, settingOutputFileFolder);
 		outputDataToFile("gwas_catalog",null,true, linkEntryTemplate, settingOutputFileFolder);
-		outputDataToFile("omim",null,true, linkEntryTemplate, settingOutputFileFolder);
+		outputDataToFile("omim",null,true, reducedLinkEntryTemplate, settingOutputFileFolder);
 		outputDataToFile("psychiatric_cnvs",null,true, linkEntryTemplate, settingOutputFileFolder);
-		outputDataToFile("asd_genes",null,true, linkEntryTemplate, settingOutputFileFolder);
-		outputDataToFile("id_devdelay_genes",null,true, linkEntryTemplate, settingOutputFileFolder);
+		outputDataToFile("asd_genes",null,true, reducedLinkEntryTemplate, settingOutputFileFolder);
+		outputDataToFile("id_devdelay_genes",null,true, reducedLinkEntryTemplate, settingOutputFileFolder);
 		outputDataToFile("mouse_knockout",null,true, linkEntryTemplate, settingOutputFileFolder);
 		
 	}
@@ -1186,7 +1211,7 @@ public class TIEFighter
 		q=new SQL()
 		{
 			{
-				SELECT("g.*, r.chr AS chr_r, r.bp1 AS bp1_r, r.bp2 AS bp2_r, r.genename AS genename_r, r.type AS type_r");
+				SELECT("g.*, r.type AS type_id_dd");
 				FROM(schemaName+".PROTEIN_CODING_GENES g");
 				INNER_JOIN(schemaName+"._id_devdelay_genes r ON g.geneName_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
 				ORDER_BY("INPUTID,chr,bp1,bp2");
