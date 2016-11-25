@@ -38,7 +38,7 @@ import org.jakz.common.formatter.CustomFormatter.IOType;
 public class TIEFighter
 {
 	
-	public static final String version = "1.5.1";
+	public static final String version = "1.5.2";
 	
 	private static String clHelp = TextMap.help;
 	private static String clInputFileFolder = TextMap.input;
@@ -208,27 +208,27 @@ public class TIEFighter
 		
 		if(commandLine.hasOption(clInputFormat))
 		{
-			String ov = commandLine.getOptionValue(clInputFormat).toUpperCase();
+			String ov = commandLine.getOptionValue(clInputFormat).trim().toUpperCase();
 			try
 			{
 				settingInputFormat=IOType.valueOf(ov);
 			}
 			catch (Exception e)
 			{
-				throw new ApplicationException("Input format error. Provided:"+ov,e);
+				throw new ApplicationException("Input format error. Provided ["+ov+"]",e);
 			}
 		}
 		
 		if(commandLine.hasOption(clOutputFormat))
 		{
-			String ov = commandLine.getOptionValue(clOutputFormat).toUpperCase();
+			String ov = commandLine.getOptionValue(clOutputFormat).trim().toUpperCase();
 			try
 			{
 				settingOutputFormat=IOType.valueOf(ov);
 			}
 			catch (Exception e)
 			{
-				throw new ApplicationException("Output format error. Provided:"+ov,e);
+				throw new ApplicationException("Output format error. Provided ["+ov+"]",e);
 			}
 		}
 		
