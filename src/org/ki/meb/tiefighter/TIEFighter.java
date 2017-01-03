@@ -38,7 +38,7 @@ import org.jakz.common.formatter.CustomFormatter.IOType;
 public class TIEFighter
 {
 	
-	public static final String version = "1.5.2";
+	public static final String version = "1.5.3";
 	
 	private static String clHelp = TextMap.help;
 	private static String clInputFileFolder = TextMap.input;
