@@ -1,2 +1,2 @@
 cd /home/pgcbioif/basicAnnotation
-java -XX:MaxHeapSize=512m -jar "TIEFighter.jar" $*
+java -XX:MaxHeapSize=1024m -jar "TIEFighter.jar" $*
