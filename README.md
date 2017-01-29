@@ -1,4 +1,4 @@
-#TIEFighter
+#RegionAnnotator
 
 ##Data input needed
 Daner clumps or similar generated from PGC GWAS Summary Statistics

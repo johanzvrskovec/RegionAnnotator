@@ -5,4 +5,4 @@
  * @author johkal
  *
  */
-package org.ki.meb.tiefighter;
+package org.ki.meb.regionannotator;

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>TIEFighter</name>
+	<name>RegionAnnotator</name>
 	<comment></comment>
 	<projects>
 		<project>org.jakz.common</project>

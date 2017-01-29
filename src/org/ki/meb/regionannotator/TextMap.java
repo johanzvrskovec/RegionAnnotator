@@ -1,4 +1,4 @@
-package org.ki.meb.tiefighter;
+package org.ki.meb.regionannotator;
 
 public class TextMap 
 {

@@ -1,10 +1,10 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>org.ki.meb.tiefighter</groupId>
+  <groupId>org.ki.meb.regionannotator</groupId>
   <artifactId>TIEFighter</artifactId>
   <version>1.5.3</version>
   <name>TIEFighter</name>
-  <description>org.ki.meb.tiefighter TIEFighter
+  <description>org.ki.meb.regionannotator TIEFighter
 
 PGC bioinformatics, PF Sullivan &amp; JA Källberg Zvrskovec, Karolinska Institutet, (c) 2016
   </description>
@@ -98,7 +98,7 @@ PGC bioinformatics, PF Sullivan &amp; JA Källberg Zvrskovec, Karolinska Institu
 	          <manifest>
 	          	<!-- <addClasspath>true</addClasspath> -->
 	          	<!-- <manifestFile>${basedir}\\MANIFEST.MF</manifestFile> -->
-	            <mainClass>org.ki.meb.tiefighter.TIEFighter</mainClass>
+	            <mainClass>org.ki.meb.regionannotator.RegionAnnotator</mainClass>
 	          </manifest>
 	        </archive>
 	      </configuration>

@@ -1,4 +1,4 @@
-package org.ki.meb.tiefighter;
+package org.ki.meb.regionannotator;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
@@ -35,7 +35,7 @@ import org.jakz.common.formatter.CustomFormatter;
 import org.jakz.common.formatter.CustomFormatter.IOType;
 
 
-public class TIEFighter
+public class RegionAnnotator
 {
 	
 	public static final String version = "1.5.3";
@@ -102,7 +102,7 @@ public class TIEFighter
 		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Config file.").hasArg().create(clConfigFile));
 	}
 
-	public TIEFighter()
+	public RegionAnnotator()
 	{
 		startTimeNanos= System.nanoTime();
 		
@@ -246,8 +246,8 @@ public class TIEFighter
 			settingDBFolder=new File(commandLine.getOptionValue(clDatabaseLocation));
 		}
 		
-		//dataCache=new DataCache("./TIEFighter");
-		String path = settingDBFolder.getAbsolutePath()+File.separator+"TIEFighter";
+		//dataCache=new DataCache("./RegionAnnotator");
+		String path = settingDBFolder.getAbsolutePath()+File.separator+"RegionAnnotator";
 		dataCache=new DataCache(path);
 		
 		
@@ -520,12 +520,12 @@ public class TIEFighter
 	
 	public static void main(String[] args) throws Exception
 	{
-		System.out.println("//¤//TIEFighter//¤//		version "+version);
-		new TIEFighter().setCommandLine(constructCommandLine(args)).runCommands();
+		System.out.println("//¤//RegionAnnotator//¤//		version "+version);
+		new RegionAnnotator().setCommandLine(constructCommandLine(args)).runCommands();
 	}
 	
 	
-	private TIEFighter runCommands() throws Exception
+	private RegionAnnotator runCommands() throws Exception
 	{
 		if(commandLine.hasOption(TextMap.help) || commandLine.getOptions().length==0
 				//||(!commandLine.hasOption(TextMap.config)&&!commandLine.hasOption("reference")&&!commandLine.hasOption(TextMap.operate)&&!commandLine.hasOption(TextMap.get)&&!commandLine.hasOption("getall"))
@@ -569,10 +569,10 @@ public class TIEFighter
 	{
 		System.out.println("Gene Connector Command Line Application");
 		HelpFormatter formatter = new HelpFormatter();
-		formatter.printHelp("java -jar \"TIEFighter.jar\"", "", clOptions, "", true);
+		formatter.printHelp("java -jar \"RegionAnnotator.jar\"", "", clOptions, "", true);
 	}
 	
-	public TIEFighter setCommandLine(CommandLine nCommandLine)
+	public RegionAnnotator setCommandLine(CommandLine nCommandLine)
 	{
 		commandLine=nCommandLine;
 		return this;
