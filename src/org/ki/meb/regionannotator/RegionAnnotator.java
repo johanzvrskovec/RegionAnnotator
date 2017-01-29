@@ -38,7 +38,7 @@ import org.jakz.common.formatter.CustomFormatter.IOType;
 public class RegionAnnotator
 {
 	
-	public static final String version = "1.5.3";
+	public static final String version = "1.6.0";
 	
 	private static String clHelp = TextMap.help;
 	private static String clInputFileFolder = TextMap.input;
