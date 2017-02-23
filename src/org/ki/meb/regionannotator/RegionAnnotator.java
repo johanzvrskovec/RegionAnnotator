@@ -25,7 +25,7 @@ import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.json.JSONObject;
+import org.jakz.common.JSONObject;
 import org.jakz.common.ApplicationException;
 import org.jakz.common.DataCache;
 import org.jakz.common.IndexedMap;
@@ -38,7 +38,7 @@ import org.jakz.common.formatter.CustomFormatter.IOType;
 public class RegionAnnotator
 {
 	
-	public static final String version = "1.6.0";
+	public static final String version = "1.6.1";
 	
 	private static String clHelp = TextMap.help;
 	private static String clInputFileFolder = TextMap.input;

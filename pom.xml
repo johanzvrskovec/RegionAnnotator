@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.ki.meb.regionannotator</groupId>
   <artifactId>RegionAnnotator</artifactId>
-  <version>1.6.0</version>
+  <version>1.6.1</version>
   <name>RegionAnnotator</name>
   <description>org.ki.meb.regionannotator RegionAnnotator
 
@@ -122,7 +122,7 @@ PGC bioinformatics, PF Sullivan &amp; JA Källberg Zvrskovec, Karolinska Institu
 		<dependency>
 			<groupId>org.jakz.common</groupId>
 			<artifactId>org.jakz.common</artifactId>
-			<version>1.7.1</version>
+			<version>1.9.0</version>
 		</dependency>
   </dependencies>
   <organization>
