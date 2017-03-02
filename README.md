@@ -6,7 +6,10 @@ https://github.com/ivankosmos/RegionAnnotator
 Daner clumps or similar generated from PGC GWAS Summary Statistics
 
 ##What the program does
-Creates a number of tables with gene entries (rows) and psychiatric related annotations (columns). Includes gencode location, gene-based p-values, SFARI ASD annotation, GENCODE annotation, GWAS catalog annotation, OMIM annotation and manual curation among other things. Genes/regions are annotated based on an expanded (10 Mbases) segment overlap condition or a gene name comparison condition.
+Creates a number of tables with gene entries (rows) and psychiatric related annotations (columns). Includes gencode location, gene-based p-values, SFARI ASD annotation, GENCODE annotation, GWAS catalog annotation, OMIM annotation and manual curation among other things. Genes/regions are annotated based on
+- protein\_coding\_genes: an expanded (10 Mbases) segment overlap condition, and a distance condition (distance<100Kb).
+- omim, asd\_genes, id\_devdelay\_genes, mouse\_knockout: an expanded (10 Mbases) segment overlap condition, a distance condition (distance<100Kb), and a gene name comparison condition.
+- gwas\_catalog, psychiatric\_cnvs: a segment overlap condition.
 
 ##What the data output will look like
 Multiple .csv/.tsv-files or one MS excel-file or one json-file. Creates a Java H2 database file that can be accessed directly instead of file export.
@@ -22,7 +25,7 @@ Multiple .csv/.tsv-files or one MS excel-file or one json-file. Creates a Java H
 ### Operate
 The program runs operation actions after every user input.
 
-- TwoSegmentOverlapcondition(a0,a1,b0,b1) = ``((a0<=b0 AND b0<=a1) OR (a0<=b1 AND b1<=a1) OR (b0<=a0 AND a0<=b1) OR (b0<=a1 AND a1<=b1))``
+- TwoSegmentOverlapCondition(a0,a1,b0,b1) = ``((a0<=b0 AND b0<=a1) OR (a0<=b1 AND b1<=a1) OR (b0<=a0 AND a0<=b1) OR (b0<=a1 AND a1<=b1))``
 
 1. Computes an enriched version of the user input in the table USER\_INPUT.
   - location : A coordinate composed of the chromosome (chr) and the basepair coordinates (bp1, bp2) that has been formatted into a string. A comma is used as a 3-character separator in the basepari coordinates.
