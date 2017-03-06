@@ -2,11 +2,11 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.ki.meb.regionannotator</groupId>
   <artifactId>RegionAnnotator</artifactId>
-  <version>1.6.2</version>
+  <version>1.6.3</version>
   <name>RegionAnnotator</name>
   <description>org.ki.meb.regionannotator RegionAnnotator
 
-PGC bioinformatics, PF Sullivan &amp; JA Källberg Zvrskovec, Karolinska Institutet, (c) 2016</description>
+PGC bioinformatics, PF Sullivan &amp; JA Källberg Zvrskovec, Karolinska Institutet, (c) 2017</description>
   <properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
