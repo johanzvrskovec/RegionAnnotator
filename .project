@@ -3,7 +3,6 @@
 	<name>RegionAnnotator</name>
 	<comment></comment>
 	<projects>
-		<project>org.jakz.common</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

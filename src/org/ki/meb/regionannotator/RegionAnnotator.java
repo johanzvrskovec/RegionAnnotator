@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
@@ -38,7 +39,7 @@ import org.jakz.common.formatter.CustomFormatter.IOType;
 public class RegionAnnotator
 {
 	
-	public static final String version = "1.6.3";
+	public static final String version = "1.7.0";
 	
 	private static String clHelp = TextMap.help;
 	private static String clInputFileFolder = TextMap.input;
@@ -83,23 +84,22 @@ public class RegionAnnotator
 	{
 		//clOptions.addOption(OptionBuilder.create(TextMap.regtest)); //inactivated as default
 		clOptions.addOption(clHelp,false,"Print usage help.");
-		
-		clOptions.addOption(OptionBuilder.withArgName("file/folder path").withDescription("Input from the specified file or folder.").hasArg().create(clInputFileFolder));
-		clOptions.addOption(OptionBuilder.withArgName("file/folder path").withDescription("Output to the specified file or folder.").hasArg().create(clOutputFileFolder));
-		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Documentation template for excel output.").hasArg().create(clTemplate));
+		clOptions.addOption(Option.builder(clInputFileFolder).hasArg().argName("file/folder path").desc("Input from the specified file or folder.").build());
+		clOptions.addOption(Option.builder(clOutputFileFolder).hasArg().argName("file/folder path").desc("Output to the specified file or folder.").build());
+		clOptions.addOption(Option.builder(clTemplate).hasArg().argName("file path").desc("Documentation template for excel output.").build());
 		clOptions.addOption(clReference,false,"Enter reference data.");
 		clOptions.addOption(clGene,false,"Enter gene (reference) data.");
 		clOptions.addOption(clNonames,false,"The first row of data in the input files contains NO column names.");
-		clOptions.addOption(OptionBuilder.withArgName("dataset name").withDescription("Get specific database content (table/view) as exported output.").hasArg().create(clGet));
+		clOptions.addOption(Option.builder(clGet).hasArg().argName("dataset name").desc("Get specific database content (table/view) as exported output.").build());
 		clOptions.addOption(clGetall,false,"Output all database content.");
 		
-		clOptions.addOption(OptionBuilder.withArgName("format - DATACACHE,EXCEL,CSV,TSV").withDescription("Force output format.").hasArg().create(clOutputFormat));
-		clOptions.addOption(OptionBuilder.withArgName("format - DATACACHE,EXCEL,CSV,TSV").withDescription("Force input format.").hasArg().create(clInputFormat));
-		clOptions.addOption(OptionBuilder.withArgName("true/false").withDescription("Overwrite existing tables with the same names. Default - true.").hasArg().create(clOverwrite));
-		clOptions.addOption(OptionBuilder.withArgName("true/false").withDescription("Perform operation specifics or not. Default - true.").hasArg().create(clOperate));
-		clOptions.addOption(OptionBuilder.withArgName("time limit in milliseconds").withDescription("Database connection timeout. Default 30000 milliseconds.").hasArg().create(clTimeout));
-		clOptions.addOption(OptionBuilder.withArgName("folder path").withDescription("Database location.").hasArg().create(clDatabaseLocation));
-		clOptions.addOption(OptionBuilder.withArgName("file path").withDescription("Config file.").hasArg().create(clConfigFile));
+		clOptions.addOption(Option.builder(clOutputFormat).hasArg().argName("format - DATACACHE,EXCEL,CSV,TSV").desc("Force output format.").build());
+		clOptions.addOption(Option.builder(clInputFormat).hasArg().argName("format - DATACACHE,EXCEL,CSV,TSV").desc("Force input format.").build());
+		clOptions.addOption(Option.builder(clOverwrite).hasArg().argName("true/false").desc("Overwrite existing tables with the same names. Default - true.").build());
+		clOptions.addOption(Option.builder(clOperate).hasArg().argName("true/false").desc("Perform operation specifics or not. Default - true.").build());
+		clOptions.addOption(Option.builder(clTimeout).hasArg().argName("time limit in milliseconds").desc("Database connection timeout. Default 30000 milliseconds.").build());
+		clOptions.addOption(Option.builder(clDatabaseLocation).hasArg().argName("folder path").desc("Database location.").build());
+		clOptions.addOption(Option.builder(clConfigFile).hasArg().argName("file path").desc("Config file.").build());
 	}
 
 	public RegionAnnotator()
@@ -758,7 +758,7 @@ public class RegionAnnotator
 			if(datasetName==null)
 				filename="output";
 			else
-				filename=datasetName;
+				filename=datasetName+"_out";
 		}
 		
 		if(nof!=null&&!nof.isDirectory())
@@ -821,7 +821,7 @@ public class RegionAnnotator
 					if(filename.indexOf('.')>=0)
 						filename = filename.substring(0,filename.lastIndexOf("."));
 					
-					settingOutputFileFolder = new File(outputFolderPath+filename+".xlsx");
+					settingOutputFileFolder = new File(outputFolderPath+filename+"_out.xlsx");
 				}
 			}
 			
