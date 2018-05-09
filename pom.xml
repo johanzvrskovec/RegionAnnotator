@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.ki.meb.regionannotator</groupId>
   <artifactId>RegionAnnotator</artifactId>
-  <version>1.7.0</version>
+  <version>1.7.1</version>
   <name>RegionAnnotator</name>
   <description>org.ki.meb.regionannotator RegionAnnotator
 
@@ -122,8 +122,24 @@ PGC bioinformatics, PF Sullivan &amp; JA Källberg Zvrskovec, Karolinska Institu
 		<dependency>
 			<groupId>org.jakz.common</groupId>
 			<artifactId>org.jakz.common</artifactId>
-			<version>2.4.0</version>
+			<version>2.6.0</version>
 		</dependency>
+		<dependency>
+			<groupId>javax.ws.rs</groupId>
+			<artifactId>javax.ws.rs-api</artifactId>
+			<version>2.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.glassfish.jersey.core</groupId>
+			<artifactId>jersey-client</artifactId>
+			<version>2.27</version>
+		</dependency>
+		<!-- To fix error with java.lang.IllegalStateException: InjectionManagerFactory not found. -->
+	  	<dependency>
+	        <groupId>org.glassfish.jersey.inject</groupId>
+	        <artifactId>jersey-hk2</artifactId>
+	        <version>2.26</version>
+	    </dependency>
   </dependencies>
   <organization>
   	<name>Karolinska Institutet</name>

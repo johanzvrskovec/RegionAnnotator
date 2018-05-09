@@ -39,7 +39,7 @@ import org.jakz.common.formatter.CustomFormatter.IOType;
 public class RegionAnnotator
 {
 	
-	public static final String version = "1.7.0";
+	public static final String version = "1.7.1";
 	
 	private static String clHelp = TextMap.help;
 	private static String clInputFileFolder = TextMap.input;
@@ -1128,7 +1128,7 @@ public class RegionAnnotator
 				SELECT("g.*");
 				FROM(schemaName+".PROTEIN_CODING_GENES_ALL g");
 				WHERE("dist<100000");
-				ORDER_BY("INPUTID,chr,bp1,bp2");
+				ORDER_BY("INPUTID,dist,ensembl_gm");
 			}
 		}.toString();
 		dataCache.view("PROTEIN_CODING_GENES", q).commit(); //genesPCnear
@@ -1151,7 +1151,7 @@ public class RegionAnnotator
 				SELECT("c.*, r.bp1 AS bp1_gwas, r.snpid AS snpid_gwas, r.pvalue AS pvalue_gwas, r.pmid AS pmid_gwas, r.trait AS trait_gwas");
 				FROM(schemaName+"._USER_INPUT c");
 				INNER_JOIN(schemaName+"._gwas_catalog r ON c.chr=r.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1", "c.bp2", "r.bp1", "r.bp2"));
-				ORDER_BY("INPUTID,c.chr,c.bp1,c.bp2");
+				ORDER_BY("INPUTID,pvalue_gwas,snpid_gwas");
 			}
 		}.toString();
 		dataCache.table("gwas_catalog", q).commit();
@@ -1167,7 +1167,7 @@ public class RegionAnnotator
 				SELECT("g.*, r.OMIMgene AS omimgene_omim, r.OMIMDisease AS omimdisease_omim, r.type AS type_omimi");
 				FROM(schemaName+".PROTEIN_CODING_GENES g");
 				INNER_JOIN(schemaName+"._omim r ON g.genename_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
-				ORDER_BY("INPUTID,chr,bp1,bp2");
+				ORDER_BY("INPUTID,dist,omimgene_omim,genename_gm");
 			}
 		}.toString();
 		dataCache.table("omim", q).commit();
@@ -1182,7 +1182,7 @@ public class RegionAnnotator
 				SELECT("c.*, r.chr AS chr_r, r.bp1 AS bp1_r, r.bp2 AS bp2_r, r.disease AS disease_r, r.type AS type_r, r.note AS note_r");
 				FROM(schemaName+"._USER_INPUT c");
 				INNER_JOIN(schemaName+"._psychiatric_cnvs r ON c.chr=r.chr AND "+dataCache.scriptTwoSegmentOverlapCondition("c.bp1", "c.bp2", "r.bp1", "r.bp2"));
-				ORDER_BY("INPUTID,c.chr,c.bp1,c.bp2");
+				ORDER_BY("INPUTID,disease_r,type_r");
 			}
 		}.toString();
 		dataCache.table("psychiatric_cnvs", q).commit();
@@ -1198,7 +1198,7 @@ public class RegionAnnotator
 				SELECT("g.*, r.type AS type_asd");
 				FROM(schemaName+".PROTEIN_CODING_GENES g");
 				INNER_JOIN(schemaName+"._asd_genes r ON g.genename_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
-				ORDER_BY("INPUTID,chr,bp1,bp2");
+				ORDER_BY("INPUTID,dist,type_asd,genename_gm");
 			}
 		}.toString();
 		dataCache.table("asd_genes", q).commit();
@@ -1214,7 +1214,7 @@ public class RegionAnnotator
 				SELECT("g.*, r.type AS type_id_dd");
 				FROM(schemaName+".PROTEIN_CODING_GENES g");
 				INNER_JOIN(schemaName+"._id_devdelay_genes r ON g.geneName_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
-				ORDER_BY("INPUTID,chr,bp1,bp2");
+				ORDER_BY("INPUTID,dist,type_id_dd,genename_gm");
 			}
 		}.toString();
 		dataCache.table("id_devdelay_genes", q).commit();
@@ -1230,7 +1230,7 @@ public class RegionAnnotator
 				SELECT("g.*, r.musName AS musname_r, r.phenotype AS phenotype_r");
 				FROM(schemaName+".PROTEIN_CODING_GENES g");
 				INNER_JOIN(schemaName+"._mouse_knockout r ON g.geneName_gm=r.geneName AND g.geneName_gm IS NOT NULL AND g.geneName_gm!='' AND r.geneName IS NOT NULL AND r.geneName!=''");
-				ORDER_BY("INPUTID,chr,bp1,bp2");
+				ORDER_BY("INPUTID,dist,ensembl_gm");
 			}
 		}.toString();
 		dataCache.table("mouse_knockout", q).commit();
