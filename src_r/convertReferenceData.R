@@ -1,7 +1,7 @@
-#run in inputReference
+#run in inputPreProcess
 
 
-gwasCatalogNewTableRaw<-read.csv("gwas_catalog_v1.0.2-associations_e92_r2018-05-03_GRCh38.p12.tsv",sep="\t",fill=TRUE)
+gwasCatalogNewTableRaw<-read.csv("gwas_catalog_v1.0.2-associations_e92_r2018-05-29.tsv",sep="\t",fill=TRUE)
 
 
 
@@ -13,12 +13,23 @@ colnames(gwasCatalogNewTable)[colnames(gwasCatalogNewTable)=="SNP_ID_CURRENT"]<-
 colnames(gwasCatalogNewTable)[colnames(gwasCatalogNewTable)=="P.VALUE"]<-"pvalue"
 colnames(gwasCatalogNewTable)[colnames(gwasCatalogNewTable)=="PUBMEDID"]<-"pmid"
 
-gwasCatalogNewTableSigClean<-subset(gwasCatalogNewTable, trait!="" & chr!="" & nchar(as.character(chr))<3 & bp1!="" & snpid!="" & pvalue!="" & pmid!="" & pvalue<1e-8)
+gwasCatalogNewTableSigClean<-subset(gwasCatalogNewTable, trait!="" & chr!="" & nchar(as.character(chr))<3 & bp1!="" & snpid!="" & pvalue!="" & pmid!="" & pvalue<5e-8)
+gwasCatalogNewTableSigClean$chrn<-gwasCatalogNewTableSigClean$chr
 gwasCatalogNewTableSigClean$chr<-paste("chr",gwasCatalogNewTableSigClean$chr,sep = "")
+gwasCatalogNewTableSigClean$bp2<-gwasCatalogNewTableSigClean$bp1
 gwasCatalogNewTableSigClean$snpid<- strtoi(gwasCatalogNewTableSigClean$snpid)
+gwasCatalogNewTableSigClean$fullcoord<-paste(gwasCatalogNewTableSigClean$chr,gwasCatalogNewTableSigClean$bp1,sep=":")
+gwasCatalogNewTableSigClean$fullcoord<-paste(gwasCatalogNewTableSigClean$fullcoord,gwasCatalogNewTableSigClean$bp1,sep="-")
 
-unique(gwasCatalogNewTableSigClean$chr)
+unique(gwasCatalogNewTableSigClean$chrn)
 
+coordMap<-gwasCatalogNewTableSigClean[c("chrn","bp1","bp2")]
+#coordMap<-gwasCatalogNewTableSigClean[c("fullcoord","snpid")]
+coordMap<-unique(coordMap)
+
+write.table(coordMap,file = "coordMapToConvert.bed",row.names = FALSE,quote = FALSE, sep = " ",col.names = FALSE, append=FALSE)
+#FOR USIGN THE ONLINE LIFTOVER TOOL
+#NOT WORKING
 
 #fix snp coordinates
 gwasCatalogNewSNPMApping<-read.table("newSNPMapping.tsv",sep="\t",fill=TRUE,header = FALSE)

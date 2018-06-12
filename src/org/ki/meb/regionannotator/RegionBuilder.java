@@ -179,6 +179,19 @@ public class RegionBuilder
 			}
 			return null;
 		}
+		else if(response!=null&&response.getStatus()==429)
+		{
+			try
+			{
+				Thread.sleep(5000);
+			} catch (InterruptedException e)
+			{
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			return fetchNewCoordinate(rsId);
+		}
 		else if(response!=null)
 		{
 			System.err.println("No working connection with external. Status code "+response.getStatus());
